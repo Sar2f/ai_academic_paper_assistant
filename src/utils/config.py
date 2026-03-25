@@ -17,7 +17,7 @@ class AppConfig:
     max_tokens: int = 2000
     temperature: float = 0.1
     rate_limit_delay: float = 0.1
-    use_mock_data: bool = True  # Use mock data for demonstration
+    use_mock_data: bool = False  # Use real API data by default
     
     # UI Settings
     streamlit_port: int = 8501
@@ -35,7 +35,7 @@ class AppConfig:
             max_tokens=int(os.getenv("MAX_TOKENS", "2000")),
             temperature=float(os.getenv("TEMPERATURE", "0.1")),
             rate_limit_delay=float(os.getenv("RATE_LIMIT_DELAY", "0.1")),
-            use_mock_data=os.getenv("USE_MOCK_DATA", "true").lower() == "true",
+            use_mock_data=os.getenv("USE_MOCK_DATA", "false").lower() == "true",
             streamlit_port=int(os.getenv("STREAMLIT_PORT", "8501")),
             streamlit_host=os.getenv("STREAMLIT_HOST", "0.0.0.0")
         )

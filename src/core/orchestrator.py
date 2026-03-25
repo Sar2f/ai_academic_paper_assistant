@@ -46,6 +46,31 @@ class AcademicPaperOrchestrator:
             temperature=config.temperature
         )
     
+    def check_api_connection(self) -> dict:
+        """
+        Check connection status of all APIs.
+        
+        Returns:
+            Dictionary with connection status for each API
+        """
+        result = {
+            "semantic_scholar": self.semantic_scholar.check_connection(),
+            "use_mock_data": self.config.use_mock_data
+        }
+        
+        # Check LLM APIs if keys are configured
+        if self.config.openai_api_key:
+            result["openai"] = {"configured": True, "status": "key_configured"}
+        else:
+            result["openai"] = {"configured": False, "status": "no_key"}
+        
+        if self.config.anthropic_api_key:
+            result["anthropic"] = {"configured": True, "status": "key_configured"}
+        else:
+            result["anthropic"] = {"configured": False, "status": "no_key"}
+        
+        return result
+    
     def process_query(self, query: str, limit: Optional[int] = None) -> ProcessingResult:
         """
         Process a user query through the entire pipeline.

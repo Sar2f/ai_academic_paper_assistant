@@ -1,6 +1,5 @@
 import time
 import logging
-import json
 from typing import List, Optional
 import requests
 
@@ -14,7 +13,9 @@ class SemanticScholarAPI:
     
     BASE_URL = "https://api.semanticscholar.org/graph/v1"
     
-    def __init__(self, api_key: Optional[str] = None, rate_limit_delay: float = 0.1, use_mock: bool = False):
+    def __init__(self, api_key: Optional[str] = None, 
+                 rate_limit_delay: float = 0.1, 
+                 use_mock: bool = False):
         """
         Initialize the Semantic Scholar API client.
         
@@ -31,12 +32,79 @@ class SemanticScholarAPI:
         if api_key:
             self.session.headers.update({"x-api-key": api_key})
     
+    def check_connection(self) -> dict:
+        """
+        Check if the API is accessible.
+        
+        Returns:
+            Dictionary with connection status and details
+        """
+        if self.use_mock:
+            return {
+                "connected": False,
+                "status": "mock_mode",
+                "message": "Using mock data mode"
+            }
+        
+        test_query = "test"
+        test_url = f"{self.BASE_URL}/paper/search"
+        test_params = {
+            "query": test_query,
+            "limit": 1,
+            "fields": "paperId,title"
+        }
+        
+        try:
+            start_time = time.time()
+            response = self.session.get(test_url, params=test_params, timeout=5)
+            response_time = time.time() - start_time
+            
+            if response.status_code == 200:
+                return {
+                    "connected": True,
+                    "status": "connected",
+                    "message": (
+                        f"Connected to Semantic Scholar API "
+                        f"(response time: {response_time:.2f}s)"
+                    ),
+                    "response_time": response_time
+                }
+            elif response.status_code == 429:
+                return {
+                    "connected": False,
+                    "status": "rate_limited",
+                    "message": "Rate limited - API is accessible but rate limit reached"
+                }
+            else:
+                return {
+                    "connected": False,
+                    "status": f"error_{response.status_code}",
+                    "message": f"API returned status code: {response.status_code}"
+                }
+        except requests.exceptions.Timeout:
+            return {
+                "connected": False,
+                "status": "timeout",
+                "message": "Connection timeout - API not reachable"
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                "connected": False,
+                "status": "connection_error",
+                "message": "Connection error - network issue or API down"
+            }
+        except Exception as e:
+            return {
+                "connected": False,
+                "status": "unknown_error",
+                "message": f"Unknown error: {str(e)}"
+            }
+    
     def _generate_mock_papers(self, query: str, limit: int) -> List[Paper]:
         """Generate mock papers for demonstration purposes."""
         logger.info(f"Generating mock papers for query: {query}")
         
         mock_papers = []
-        topics = query.lower().split()
         
         for i in range(min(limit, 5)):  # Generate up to 5 mock papers
             paper_id = f"mock_{i+1}"
@@ -54,7 +122,7 @@ class SemanticScholarAPI:
                 title = f"Future Directions in {query} Research"
             
             abstract = f"This paper provides a comprehensive overview of recent advancements in {query}. "
-            abstract += f"The authors discuss key methodologies, applications, and future research directions. "
+            abstract += "The authors discuss key methodologies, applications, and future research directions. "
             abstract += f"Findings suggest significant progress in {query} over the past decade."
             
             authors = [
@@ -148,45 +216,79 @@ class SemanticScholarAPI:
         if filters:
             params["filter"] = ",".join(filters)
         
-        try:
-            response = self.session.get(f"{self.BASE_URL}/paper/search", params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            papers = []
-            for paper_data in data.get("data", []):
-                try:
-                    paper = Paper.from_semantic_scholar(paper_data)
-                    papers.append(paper)
-                except Exception as e:
-                    logger.warning(f"Failed to parse paper data: {e}")
-                    continue
-            
-            # Respect rate limits
-            time.sleep(self.rate_limit_delay)
-            
-            search_time = time.time() - start_time
-            
-            return SearchResult(
-                query=query,
-                papers=papers,
-                total_results=data.get("total", 0),
-                search_time=search_time
-            )
-            
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"API request failed for query '{query}': {e}")
-            logger.info(f"Falling back to mock data for query: {query}")
-            # Fall back to mock data if API fails
-            papers = self._generate_mock_papers(query, limit)
-            search_time = time.time() - start_time
-            
-            return SearchResult(
-                query=query,
-                papers=papers,
-                total_results=len(papers),
-                search_time=search_time
-            )
+        # Try up to 3 times with exponential backoff
+        max_retries = 3
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.session.get(f"{self.BASE_URL}/paper/search", params=params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+                
+                papers = []
+                for paper_data in data.get("data", []):
+                    try:
+                        paper = Paper.from_semantic_scholar(paper_data)
+                        papers.append(paper)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse paper data: {e}")
+                        continue
+                
+                # Respect rate limits
+                time.sleep(self.rate_limit_delay)
+                
+                search_time = time.time() - start_time
+                
+                return SearchResult(
+                    query=query,
+                    papers=papers,
+                    total_results=data.get("total", 0),
+                    search_time=search_time
+                )
+                
+            except requests.exceptions.HTTPError as e:
+                last_exception = e
+                status_code = e.response.status_code if e.response else 0
+                
+                if status_code == 429:  # Rate limited
+                    retry_delay = (2 ** attempt) * 0.5  # Exponential backoff: 0.5s, 1s, 2s
+                    logger.warning(f"Rate limited (429) on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                elif status_code >= 500:  # Server error
+                    retry_delay = (2 ** attempt) * 0.3
+                    logger.warning(f"Server error ({status_code}) on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                else:
+                    # Client error, don't retry
+                    logger.warning(f"Client error ({status_code}) for query '{query}': {e}")
+                    break
+                    
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                last_exception = e
+                retry_delay = (2 ** attempt) * 0.5
+                logger.warning(f"Network error on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+                
+            except requests.exceptions.RequestException as e:
+                last_exception = e
+                logger.warning(f"Request exception for query '{query}': {e}")
+                break  # Don't retry other request exceptions
+        
+        # If we get here, all retries failed
+        logger.warning(f"All {max_retries} attempts failed for query '{query}'")
+        logger.info(f"Falling back to mock data for query: {query}")
+        
+        # Fall back to mock data if API fails
+        papers = self._generate_mock_papers(query, limit)
+        search_time = time.time() - start_time
+        
+        return SearchResult(
+            query=query,
+            papers=papers,
+            total_results=len(papers),
+            search_time=search_time
+        )
     
     def get_paper_details(self, paper_id: str) -> Optional[Paper]:
         """
