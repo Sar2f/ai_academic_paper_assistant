@@ -1,232 +1,232 @@
-# AI Academic Paper Assistant 📚
+# AI 学术论文助手 📚
 
-A web application that allows users to input a search query, searches for *real, traceable* academic papers related to the query, curates and summarizes the findings using an LLM, and provides a coherent answer with **zero hallucination**.
+一个允许用户输入搜索查询，搜索与查询相关的*真实、可追溯*的学术论文，使用LLM整理和总结发现，并提供**零幻觉**的连贯答案的Web应用程序。
 
-## 🎯 Objective
+## 🎯 目标
 
-Build a web application that:
-1. Accepts user search queries
-2. Searches for real academic papers using Semantic Scholar API
-3. Uses LLMs to generate answers based **strictly** on retrieved papers
-4. Provides citations for every claim
-5. Presents results in a clean, user-friendly interface
+构建一个Web应用程序，该程序：
+1. 接受用户搜索查询
+2. 使用Semantic Scholar API搜索真实的学术论文
+3. 使用LLM**严格**基于检索到的论文生成答案
+4. 为每个主张提供引用
+5. 在干净、用户友好的界面中呈现结果
 
-## 🚀 Core Constraint (CRITICAL)
+## 🚀 核心约束（关键）
 
-**ZERO HALLUCINATION** - The AI's final answer must be based *strictly* on the retrieved paper data. Every claim must have a citation to a real paper. The LLM is not allowed to invent paper titles, authors, or content.
+**零幻觉** - AI的最终答案必须*严格*基于检索到的论文数据。每个主张必须引用真实的论文。LLM不允许编造论文标题、作者或内容。
 
-## ✨ Key Features
+## ✨ 主要特性
 
-- **Clean Web Interface**: Streamlit-based GUI with intuitive search and results display
-- **Real Paper Search**: Integration with Semantic Scholar API for authentic academic papers
-- **AI-Powered Summarization**: LLM integration (OpenAI/Anthropic) for generating coherent answers
-- **Citation Tracking**: Every claim in the answer is linked to specific papers
-- **Paper Details**: View abstracts, authors, citations, and links to original papers
-- **Configurable Settings**: Adjust search limits, LLM models, and temperature
+- **简洁的Web界面**：基于Streamlit的GUI，具有直观的搜索和结果展示
+- **真实论文搜索**：与Semantic Scholar API集成，获取真实的学术论文
+- **AI驱动的总结**：集成LLM（OpenAI/Anthropic）以生成连贯的答案
+- **引用追踪**：答案中的每个主张都链接到具体的论文
+- **论文详情**：查看摘要、作者、引用次数以及原始论文链接
+- **可配置设置**：调整搜索限制、LLM模型和温度
 
-## 🏗️ Architecture
+## 🏗️ 架构
 
 ```
-User Query → Streamlit UI → AcademicPaperOrchestrator → Semantic Scholar API → LLM Processor → Results Display
+用户查询 → Streamlit UI → AcademicPaperOrchestrator → Semantic Scholar API → LLM Processor → 结果展示
 ```
 
-### Components:
-1. **Frontend**: Streamlit application (`app.py`)
-2. **Orchestrator**: Coordinates search and processing (`src/core/orchestrator.py`)
-3. **Paper Search**: Semantic Scholar API client (`src/api/semantic_scholar.py`)
-4. **LLM Integration**: OpenAI/Anthropic processor with anti-hallucination prompts (`src/llm/processor.py`)
-5. **Data Models**: Paper and author data structures (`src/models/paper.py`)
-6. **Configuration**: Environment-based settings (`src/utils/config.py`)
+### 组件：
+1. **前端**：Streamlit 应用程序 (`app.py`)
+2. **协调器**：协调搜索和处理 (`src/core/orchestrator.py`)
+3. **论文搜索**：Semantic Scholar API 客户端 (`src/api/semantic_scholar.py`)
+4. **LLM 集成**：带有抗幻觉提示的 OpenAI/Anthropic 处理器 (`src/llm/processor.py`)
+5. **数据模型**：论文和作者数据结构 (`src/models/paper.py`)
+6. **配置**：基于环境的设置 (`src/utils/config.py`)
 
-## 🛠️ Installation
+## 🛠️ 安装
 
-### Prerequisites
+### 先决条件
 - Python 3.8+
-- pip package manager
+- pip 包管理器
 
-### Step 1: Clone and Setup
+### 步骤1：克隆和设置
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone <repository-url>
 cd ai_academic_paper_assistant
 
-# Create virtual environment (recommended)
+# 创建虚拟环境（推荐）
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 ```
 
-### Step 2: Configure Environment
+### 步骤2：配置环境
 ```bash
-# Copy the example environment file
+# 复制示例环境文件
 cp .env.example .env
 
-# Edit .env file with your API keys
-# You need at least one LLM API key for full functionality
-nano .env  # or use your favorite editor
+# 编辑 .env 文件，填入你的 API 密钥
+# 你需要至少一个 LLM API 密钥以获得完整功能
+nano .env  # 或使用你喜欢的编辑器
 ```
 
-### Step 3: Environment Variables
-Configure your `.env` file:
+### 步骤3：环境变量
+配置你的 `.env` 文件：
 ```env
-# OpenAI API Key (optional but recommended)
+# OpenAI API 密钥（可选但推荐）
 OPENAI_API_KEY=your_openai_api_key_here
 
-# Anthropic API Key (optional alternative)
+# Anthropic API 密钥（可选替代）
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-# Semantic Scholar API (no key needed for basic usage)
+# Semantic Scholar API（基础使用无需密钥）
 SEMANTIC_SCHOLAR_API_KEY=optional_semantic_scholar_api_key
 
-# Application Settings
+# 应用程序设置
 MAX_PAPERS_TO_RETRIEVE=10
-LLM_MODEL=gpt-4o  # or claude-3-5-sonnet, gpt-3.5-turbo, etc.
+LLM_MODEL=gpt-4o  # 或 claude-3-5-sonnet, gpt-3.5-turbo 等
 MAX_TOKENS=2000
-TEMPERATURE=0.1  # Low temperature for more factual responses
+TEMPERATURE=0.1  # 低温度以获得更多事实性响应
 ```
 
-## 🚀 Usage
+## 🚀 使用
 
-### Running the Application
+### 运行应用程序
 ```bash
-# Start the Streamlit application
+# 启动 Streamlit 应用程序
 streamlit run app.py
 
-# Or with custom host/port
+# 或使用自定义主机/端口
 streamlit run app.py --server.port 8501 --server.address 0.0.0.0
 ```
 
-### Access the Application
-Once running, open your browser and navigate to:
-- **Local**: `http://localhost:8501`
-- **Remote**: `http://<your-server-ip>:8501`
+### 访问应用程序
+运行后，打开浏览器并导航至：
+- **本地**：`http://localhost:8501`
+- **远程**：`http://<your-server-ip>:8501`
 
-### Using the Application
-1. **Enter your research question** in the search box
-2. **Adjust settings** (optional): Change the number of papers to retrieve
-3. **Click "Search & Analyze"**: The system will:
-   - Search Semantic Scholar for relevant papers
-   - Process abstracts and metadata
-   - Generate an AI-powered answer based strictly on the papers
-   - Display the answer with citations
-4. **Review results**:
-   - AI-generated answer with highlighted citations
-   - List of referenced papers with details
-   - All papers found in the search
+### 使用应用程序
+1. **在搜索框中输入你的研究问题**
+2. **调整设置**（可选）：更改要检索的论文数量
+3. **点击"搜索与分析"**：系统将：
+   - 在 Semantic Scholar 中搜索相关论文
+   - 处理摘要和元数据
+   - 严格基于论文生成 AI 驱动的答案
+   - 显示带有引用的答案
+4. **查看结果**：
+   - 带有高亮引用的 AI 生成答案
+   - 包含详细信息的引用论文列表
+   - 搜索到的所有论文
 
-## 📊 Example Queries
+## 📊 示例查询
 
-Try these example queries to get started:
+尝试以下示例查询以开始：
 - "What are the latest advancements in quantum computing?"
 - "How does deep learning improve natural language processing?"
 - "What are the environmental impacts of cryptocurrency mining?"
 - "Recent developments in CRISPR gene editing technology"
 
-## 🔧 Configuration Options
+## 🔧 配置选项
 
-### LLM Models
-The application supports multiple LLM providers:
+### LLM 模型
+应用程序支持多个 LLM 提供商：
 - **OpenAI**: `gpt-4o`, `gpt-4-turbo`, `gpt-3.5-turbo`
 - **Anthropic**: `claude-3-5-sonnet`, `claude-3-opus`, `claude-3-haiku`
 
-### Search Parameters
-- `MAX_PAPERS_TO_RETRIEVE`: Number of papers to fetch (1-50)
-- `TEMPERATURE`: LLM creativity vs. factuality (0.0-1.0)
-- `MAX_TOKENS`: Maximum response length (100-4000)
+### 搜索参数
+- `MAX_PAPERS_TO_RETRIEVE`: 要获取的论文数量 (1-50)
+- `TEMPERATURE`: LLM 创造力与事实性之间的权衡 (0.0-1.0)
+- `MAX_TOKENS`: 最大响应长度 (100-4000)
 
-### Rate Limiting
-- `RATE_LIMIT_DELAY`: Delay between API calls to respect rate limits
+### 速率限制
+- `RATE_LIMIT_DELAY`: API调用之间的延迟，以遵守速率限制
 
-## 🧪 Testing
+## 🧪 测试
 
-Run the integration tests to verify functionality:
+运行集成测试以验证功能：
 ```bash
 python test_integration.py
 ```
 
-## 🏗️ Project Structure
+## 🏗️ 项目结构
 
 ```
 ai_academic_paper_assistant/
-├── app.py                    # Main Streamlit application
-├── requirements.txt          # Python dependencies
-├── README.md                # This file
-├── .env.example             # Example environment configuration
-├── .gitignore              # Git ignore rules
-├── test_integration.py     # Integration tests
+├── app.py                    # 主 Streamlit 应用程序
+├── requirements.txt          # Python 依赖
+├── README.md                # 本文档
+├── .env.example             # 示例环境配置
+├── .gitignore              # Git 忽略规则
+├── test_integration.py     # 集成测试
 │
-├── src/                    # Source code
+├── src/                    # 源代码
 │   ├── __init__.py
 │   │
-│   ├── core/              # Core orchestration logic
+│   ├── core/              # 核心协调逻辑
 │   │   ├── __init__.py
 │   │   └── orchestrator.py
 │   │
-│   ├── api/               # API clients
+│   ├── api/               # API 客户端
 │   │   ├── __init__.py
 │   │   └── semantic_scholar.py
 │   │
-│   ├── llm/               # LLM integration
+│   ├── llm/               # LLM 集成
 │   │   ├── __init__.py
 │   │   └── processor.py
 │   │
-│   ├── models/            # Data models
+│   ├── models/            # 数据模型
 │   │   ├── __init__.py
 │   │   └── paper.py
 │   │
-│   └── utils/             # Utilities
+│   └── utils/             # 工具类
 │       ├── __init__.py
 │       └── config.py
 │
-├── config/                # Configuration files
-├── data/                  # Data storage (if needed)
-└── tests/                 # Test files
+├── config/                # 配置文件
+├── data/                  # 数据存储（如果需要）
+└── tests/                 # 测试文件
 ```
 
-## 🔒 Security & Privacy
+## 🔒 安全与隐私
 
-- **API Keys**: Stored in `.env` file (never committed to version control)
-- **Data Processing**: Papers are processed through secure API calls
-- **No Data Storage**: User queries and results are not persistently stored
-- **Rate Limiting**: Built-in delays to respect API rate limits
+- **API 密钥**：存储在 `.env` 文件中（从不提交到版本控制）
+- **数据处理**：论文通过安全的 API 调用处理
+- **无数据存储**：用户查询和结果不会持久存储
+- **速率限制**：内置延迟以遵守 API 速率限制
 
-## 🤝 Contributing
+## 🤝 贡献
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+1. Fork 本仓库
+2. 创建特性分支：`git checkout -b feature/amazing-feature`
+3. 提交更改：`git commit -m 'Add amazing feature'`
+4. 推送到分支：`git push origin feature/amazing-feature`
+5. 开启一个 Pull Request
 
-## 📝 License
+## 📝 许可证
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+本项目基于 MIT 许可证 - 详情请见 LICENSE 文件。
 
-## 🙏 Acknowledgments
+## 🙏 致谢
 
-- **Semantic Scholar**: For providing the academic paper search API
-- **OpenAI & Anthropic**: For LLM APIs
-- **Streamlit**: For the excellent web application framework
+- **Semantic Scholar**：提供学术论文搜索 API
+- **OpenAI & Anthropic**：提供 LLM API
+- **Streamlit**：提供优秀的 Web 应用程序框架
 
-## 🆘 Support
+## 🆘 支持
 
-For issues, questions, or feature requests:
-1. Check the [Issues](https://github.com/yourusername/ai-academic-paper-assistant/issues) page
-2. Create a new issue with detailed description
+如有问题、疑问或功能请求：
+1. 查看 [Issues](https://github.com/yourusername/ai-academic-paper-assistant/issues) 页面
+2. 创建包含详细描述的新 issue
 
-## 📈 Future Enhancements
+## 📈 未来增强
 
-Planned features:
-- [ ] Support for additional academic databases (arXiv, PubMed)
-- [ ] Advanced filtering options (year range, citation count)
-- [ ] Paper clustering and trend analysis
-- [ ] Export results (PDF, CSV, BibTeX)
-- [ ] User accounts and search history
-- [ ] Multi-language support
-- [ ] Batch processing of queries
+计划功能：
+- [ ] 支持额外的学术数据库（arXiv、PubMed）
+- [ ] 高级筛选选项（年份范围、引用次数）
+- [ ] 论文聚类和趋势分析
+- [ ] 导出结果（PDF、CSV、BibTeX）
+- [ ] 用户账户和搜索历史
+- [ ] 多语言支持
+- [ ] 批量查询处理
 
 ---
 
-**Built with ❤️ using Streamlit, Semantic Scholar, and LLMs**
+**使用 Streamlit、Semantic Scholar 和 LLMs 构建，用心打造 ❤️**

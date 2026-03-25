@@ -25,7 +25,7 @@ load_dotenv()
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Academic Paper Assistant",
+    page_title="AI 学术论文助手",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -114,22 +114,22 @@ def initialize_app():
         return True
         
     except Exception as e:
-        st.error(f"Failed to initialize application: {str(e)}")
+        st.error(f"应用程序初始化失败：{str(e)}")
         logger.error(f"Initialization error: {e}")
         return False
 
 
 def display_header():
     """Display the application header."""
-    st.markdown('<h1 class="main-header">📚 AI Academic Paper Assistant</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Search for academic papers and get AI-powered summaries with zero hallucination</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">📚 AI 学术论文助手</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">搜索学术论文并获得零幻觉的AI驱动摘要</p>', unsafe_allow_html=True)
     
     # Display warning about API keys
     if not os.getenv("OPENAI_API_KEY") and not os.getenv("ANTHROPIC_API_KEY"):
         st.markdown("""
         <div class="warning-box">
-        ⚠️ <strong>No LLM API key detected.</strong> Please set either OPENAI_API_KEY or ANTHROPIC_API_KEY 
-        in your .env file to enable AI-powered answers. Semantic Scholar search will still work.
+        ⚠️ <strong>未检测到 LLM API 密钥。</strong> 请在 .env 文件中设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY 
+        以启用 AI 驱动的答案。Semantic Scholar 搜索仍可工作。
         </div>
         """, unsafe_allow_html=True)
 
@@ -137,14 +137,14 @@ def display_header():
 def display_sidebar():
     """Display the sidebar with configuration and information."""
     with st.sidebar:
-        st.markdown("### ⚙️ Configuration")
+        st.markdown("### ⚙️ 配置")
         
         if st.session_state.config:
             config = st.session_state.config
             
-            st.info(f"**Model:** {config.llm_model}")
-            st.info(f"**Max Papers:** {config.max_papers_to_retrieve}")
-            st.info(f"**Temperature:** {config.temperature}")
+            st.info(f"**模型:** {config.llm_model}")
+            st.info(f"**最大论文数:** {config.max_papers_to_retrieve}")
+            st.info(f"**温度:** {config.temperature}")
             
             # Display API key status
             api_status = []
@@ -157,21 +157,21 @@ def display_sidebar():
             else:
                 api_status.append("✅ Semantic Scholar (Free)")
             
-            st.info(f"**API Status:** {', '.join(api_status)}")
+            st.info(f"**API 状态:** {', '.join(api_status)}")
         
         st.markdown("---")
-        st.markdown("### 📖 How It Works")
+        st.markdown("### 📖 工作原理")
         st.markdown("""
-        1. **Enter your research question** in the search box
-        2. **Search** for relevant academic papers
-        3. **Get AI-powered answer** based on real papers
-        4. **Review references** with links to original papers
+        1. **在搜索框中输入你的研究问题**
+        2. **搜索**相关学术论文
+        3. **获取基于真实论文的AI驱动答案**
+        4. **查看引用**，包含原始论文链接
         
-        **Zero Hallucination Guarantee:** All answers are strictly based on retrieved papers.
+        **零幻觉保证：** 所有答案严格基于检索到的论文。
         """)
         
         st.markdown("---")
-        st.markdown("### 🔗 Resources")
+        st.markdown("### 🔗 资源")
         st.markdown("""
         - [Semantic Scholar API](https://www.semanticscholar.org/product/api)
         - [OpenAI API](https://platform.openai.com/)
@@ -182,27 +182,27 @@ def display_sidebar():
 
 def display_search_form():
     """Display the search form."""
-    st.markdown("### 🔍 Search for Academic Papers")
+    st.markdown("### 🔍 搜索学术论文")
     
     col1, col2 = st.columns([3, 1])
     
     with col1:
         query = st.text_input(
-            "Enter your research question:",
-            placeholder="e.g., 'What are the latest advancements in quantum computing?'",
-            help="Be specific for better results"
+            "输入你的研究问题：",
+            placeholder="例如：'量子计算的最新进展是什么？'",
+            help="更具体以获得更好结果"
         )
     
     with col2:
         limit = st.number_input(
-            "Max papers:",
+            "最大论文数：",
             min_value=1,
             max_value=20,
             value=10,
-            help="Number of papers to retrieve"
+            help="要检索的论文数量"
         )
     
-    search_button = st.button("🔎 Search & Analyze", type="primary", use_container_width=True)
+    search_button = st.button("🔎 搜索与分析", type="primary", use_container_width=True)
     
     return query, limit, search_button
 
@@ -226,20 +226,20 @@ def display_paper_card(paper, index):
             st.markdown(f"*{authors_str}*")
         with col2:
             if paper.year:
-                st.markdown(f"**Year:** {paper.year}")
+                st.markdown(f"**年份:** {paper.year}")
         with col3:
             if paper.citation_count is not None:
-                st.markdown(f"**Citations:** {paper.citation_count}")
+                st.markdown(f"**引用次数:** {paper.citation_count}")
         
         # Abstract preview
         if paper.abstract:
             abstract_preview = paper.abstract[:200] + "..." if len(paper.abstract) > 200 else paper.abstract
-            with st.expander("Abstract"):
+            with st.expander("摘要"):
                 st.write(paper.abstract)
         
         # Links
         if paper.url:
-            st.markdown(f"[📄 View Paper]({paper.url})")
+            st.markdown(f"[📄 查看论文]({paper.url})")
         
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -247,19 +247,19 @@ def display_paper_card(paper, index):
 def display_results(result):
     """Display the processing results."""
     if result.error:
-        st.error(f"Error: {result.error}")
+        st.error(f"错误：{result.error}")
         return
     
     # Display success message
     st.markdown(f"""
     <div class="success-box">
-    ✅ Found {len(result.search_result.papers)} relevant papers in {result.search_result.search_time:.2f}s. 
-    Generated answer in {result.processing_time:.2f}s total.
+    ✅ 在 {result.search_result.search_time:.2f}s 内找到 {len(result.search_result.papers)} 篇相关论文。 
+    总共在 {result.processing_time:.2f}s 内生成答案。
     </div>
     """, unsafe_allow_html=True)
     
     # Display the answer
-    st.markdown("### 📝 AI-Powered Answer")
+    st.markdown("### 📝 AI 驱动答案")
     st.markdown('<div class="answer-container">', unsafe_allow_html=True)
     
     # Process answer to highlight citations
@@ -273,7 +273,7 @@ def display_results(result):
     
     # Display referenced papers
     if result.llm_response.citations:
-        st.markdown(f"### 📚 Referenced Papers ({len(result.llm_response.citations)} papers cited)")
+        st.markdown(f"### 📚 引用论文（引用了{len(result.llm_response.citations)}篇论文）")
         
         cited_papers = []
         for idx in result.llm_response.citations:
@@ -287,7 +287,7 @@ def display_results(result):
             display_paper_card(paper, citation_num)
     
     # Display all papers found
-    st.markdown(f"### 📄 All Papers Found ({len(result.search_result.papers)} total)")
+    st.markdown(f"### 📄 所有找到的论文（共{len(result.search_result.papers)}篇）")
     
     for idx, paper in enumerate(result.search_result.papers, 1):
         # Skip papers that were already shown as citations
@@ -314,7 +314,7 @@ def main():
     
     # Handle search
     if search_button and query:
-        with st.spinner("🔍 Searching for academic papers..."):
+        with st.spinner("🔍 正在搜索学术论文..."):
             result = st.session_state.orchestrator.process_query(query, limit)
             st.session_state.last_query = query
             st.session_state.last_result = result
@@ -324,15 +324,15 @@ def main():
     
     # Display previous results if available
     elif st.session_state.last_result and st.session_state.last_query:
-        st.markdown(f"### 📋 Previous Search: '{st.session_state.last_query}'")
+        st.markdown(f"### 📋 上次搜索：'{st.session_state.last_query}'")
         display_results(st.session_state.last_result)
     
     # Footer
     st.markdown("---")
     st.markdown(
         "<div style='text-align: center; color: #6B7280;'>"
-        "AI Academic Paper Assistant • Zero Hallucination Guarantee • "
-        "Built with ❤️ using Streamlit, Semantic Scholar, and LLMs"
+        "AI 学术论文助手 • 零幻觉保证 • "
+        "使用 Streamlit、Semantic Scholar 和 LLMs 构建，用心打造 ❤️"
         "</div>",
         unsafe_allow_html=True
     )

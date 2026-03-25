@@ -46,26 +46,26 @@ class AppConfig:
         
         # Check if at least one LLM API key is set
         if not self.openai_api_key and not self.anthropic_api_key:
-            errors.append("Either OPENAI_API_KEY or ANTHROPIC_API_KEY must be set")
+            errors.append("必须设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY")
         
         # Validate LLM model choice
         if self.llm_model.startswith("gpt-") and not self.openai_api_key:
-            errors.append(f"OPENAI_API_KEY required for model {self.llm_model}")
+            errors.append(f"模型 {self.llm_model} 需要 OPENAI_API_KEY")
         elif self.llm_model.startswith("claude-") and not self.anthropic_api_key:
-            errors.append(f"ANTHROPIC_API_KEY required for model {self.llm_model}")
+            errors.append(f"模型 {self.llm_model} 需要 ANTHROPIC_API_KEY")
         
         # Validate numeric ranges
         if self.max_papers_to_retrieve < 1 or self.max_papers_to_retrieve > 50:
-            errors.append("MAX_PAPERS_TO_RETRIEVE must be between 1 and 50")
+            errors.append("MAX_PAPERS_TO_RETRIEVE 必须在 1 到 50 之间")
         
         if self.max_tokens < 100 or self.max_tokens > 4000:
-            errors.append("MAX_TOKENS must be between 100 and 4000")
+            errors.append("MAX_TOKENS 必须在 100 到 4000 之间")
         
         if self.temperature < 0 or self.temperature > 1:
-            errors.append("TEMPERATURE must be between 0 and 1")
+            errors.append("TEMPERATURE 必须在 0 到 1 之间")
         
         if errors:
-            raise ValueError("Configuration errors:\n" + "\n".join(f"  - {error}" for error in errors))
+            raise ValueError("配置错误：\n" + "\n".join(f"  - {error}" for error in errors))
         
         return True
     

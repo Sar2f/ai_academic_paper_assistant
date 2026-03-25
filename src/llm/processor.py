@@ -43,23 +43,23 @@ class LLMProcessor:
                 from openai import OpenAI
                 api_key = os.getenv("OPENAI_API_KEY")
                 if not api_key:
-                    raise ValueError("OPENAI_API_KEY environment variable is not set")
+                    raise ValueError("OPENAI_API_KEY 环境变量未设置")
                 return OpenAI(api_key=api_key)
             except ImportError:
-                raise ImportError("OpenAI package not installed. Install with: pip install openai")
+                raise ImportError("未安装 OpenAI 包。请使用 pip install openai 安装")
         
         elif self.model.startswith("claude-"):
             try:
                 from anthropic import Anthropic
                 api_key = os.getenv("ANTHROPIC_API_KEY")
                 if not api_key:
-                    raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
+                    raise ValueError("ANTHROPIC_API_KEY 环境变量未设置")
                 return Anthropic(api_key=api_key)
             except ImportError:
-                raise ImportError("Anthropic package not installed. Install with: pip install anthropic")
+                raise ImportError("未安装 Anthropic 包。请使用 pip install anthropic 安装")
         
         else:
-            raise ValueError(f"Unsupported model: {self.model}")
+            raise ValueError(f"不支持的模型：{self.model}")
     
     def generate_answer(self, query: str, papers: List[Paper]) -> LLMResponse:
         """
@@ -74,9 +74,9 @@ class LLMProcessor:
         """
         if not papers:
             return LLMResponse(
-                answer="No relevant papers found for your query.",
+                answer="未找到相关论文。",
                 citations=[],
-                error="No papers provided"
+                error="未提供论文"
             )
         
         # Prepare context from papers
@@ -91,7 +91,7 @@ class LLMProcessor:
             elif self.model.startswith("claude-"):
                 response = self._call_anthropic(prompt)
             else:
-                raise ValueError(f"Unsupported model: {self.model}")
+                raise ValueError(f"不支持的模型：{self.model}")
             
             # Parse response to extract citations
             answer, citations = self._parse_response(response)
