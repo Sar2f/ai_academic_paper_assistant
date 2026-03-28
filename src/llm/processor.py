@@ -4,7 +4,7 @@ import logging
 from typing import List, Optional
 from dataclasses import dataclass
 
-from ..models.paper import Paper
+from ..models.paper import Paper, format_author_names
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class LLMProcessor:
 
     def __init__(
         self,
-        model: str = "DeepSeek-V3.2",
+        model: str = "gpt-4o-mini",
         max_tokens: int = 2000,
         temperature: float = 0.1,
         openai_api_key: Optional[str] = None,
@@ -47,7 +47,11 @@ class LLMProcessor:
         self.temperature = temperature
         self.openai_api_key = openai_api_key
         self.anthropic_api_key = anthropic_api_key
-        self.api_base_url = api_base_url
+        if isinstance(api_base_url, str):
+            s = api_base_url.strip()
+            self.api_base_url = s if s else None
+        else:
+            self.api_base_url = None
 
         # Initialize appropriate client based on model
         self.client = self._initialize_client()
@@ -68,17 +72,18 @@ class LLMProcessor:
                 )
 
         else:
-            # OpenAI-compatible API (supports gpt-*, DeepSeek, and other models)
+            # OpenAI-compatible API (official OpenAI or compatible proxy when base URL is set)
             try:
                 from openai import OpenAI
 
                 api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
                 if not api_key:
                     raise ValueError("OPENAI_API_KEY 环境变量未设置")
-                base_url = self.api_base_url or os.getenv(
-                    "API_BASE_URL", "https://api.edgefn.net/v1"
-                )
-                return OpenAI(api_key=api_key, base_url=base_url)
+                env_base = os.getenv("API_BASE_URL", "").strip()
+                base_url = self.api_base_url or (env_base if env_base else None)
+                if base_url:
+                    return OpenAI(api_key=api_key, base_url=base_url)
+                return OpenAI(api_key=api_key)
             except ImportError:
                 raise ImportError("未安装 OpenAI 包。请使用 pip install openai 安装")
 
@@ -128,13 +133,7 @@ class LLMProcessor:
         context_parts = []
 
         for i, paper in enumerate(papers, 1):
-            # Format authors
-            author_names = [
-                author.name for author in paper.authors[:3]
-            ]  # First 3 authors
-            if len(paper.authors) > 3:
-                author_names.append("et al.")
-            authors_str = ", ".join(author_names)
+            authors_str = format_author_names(paper.authors, max_shown=3)
 
             # Create paper entry
             paper_entry = f"[{i}] {paper.title}\n"
@@ -250,5 +249,3 @@ Summary:"""
         except Exception as e:
             logger.error(f"Error summarizing paper: {e}")
             return f"Summary unavailable: {str(e)}"
-
-        return "Summary generation failed."

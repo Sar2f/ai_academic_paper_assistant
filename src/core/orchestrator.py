@@ -1,3 +1,11 @@
+"""
+MVP 核心链路（毕设演示建议优先保证以下四点跑通）：
+1. Semantic Scholar 论文检索（或模拟数据降级）
+2. 基于检索结果的 LLM 作答并解析引用编号
+3. Streamlit 配置加载与结果展示
+4. 输入校验与异常路径不崩溃
+"""
+
 import logging
 import time
 from typing import Optional
@@ -7,6 +15,7 @@ from ..api.semantic_scholar import SemanticScholarAPI
 from ..llm.processor import LLMProcessor, LLMResponse
 from ..models.paper import Paper, SearchResult
 from ..utils.config import AppConfig
+from ..utils.validation import clamp_paper_limit, normalize_search_query
 
 logger = logging.getLogger(__name__)
 
@@ -90,14 +99,15 @@ class AcademicPaperOrchestrator:
         """
         start_time = time.time()
 
-        if not query or not query.strip():
+        normalized_query = normalize_search_query(query)
+        if not normalized_query:
             return ProcessingResult(
-                query=query,
+                query=query or "",
                 search_result=SearchResult(
-                    query=query, papers=[], total_results=0, search_time=0
+                    query=query or "", papers=[], total_results=0, search_time=0
                 ),
                 llm_response=LLMResponse(
-                    answer="Please enter a valid search query.",
+                    answer="请输入有效的检索内容。",
                     citations=[],
                     error="Empty query",
                 ),
@@ -107,33 +117,37 @@ class AcademicPaperOrchestrator:
 
         try:
             # Step 1: Search for papers
-            search_limit = limit or self.config.max_papers_to_retrieve
+            search_limit = clamp_paper_limit(
+                limit, self.config.max_papers_to_retrieve
+            )
             search_result = self.semantic_scholar.search_papers(
-                query=query, limit=search_limit
+                query=normalized_query, limit=search_limit
             )
 
-            logger.info(f"Found {len(search_result.papers)} papers for query: {query}")
+            logger.info(
+                f"Found {len(search_result.papers)} papers for query: {normalized_query}"
+            )
 
             # Step 2: Generate answer using LLM
             llm_response = self.llm_processor.generate_answer(
-                query=query, papers=search_result.papers
+                query=normalized_query, papers=search_result.papers
             )
 
             processing_time = time.time() - start_time
 
             return ProcessingResult(
-                query=query,
+                query=normalized_query,
                 search_result=search_result,
                 llm_response=llm_response,
                 processing_time=processing_time,
             )
 
         except Exception as e:
-            logger.error(f"Error processing query '{query}': {e}")
+            logger.error(f"Error processing query '{normalized_query}': {e}")
             processing_time = time.time() - start_time
 
             return ProcessingResult(
-                query=query,
+                query=normalized_query,
                 search_result=SearchResult(
                     query=query, papers=[], total_results=0, search_time=0
                 ),

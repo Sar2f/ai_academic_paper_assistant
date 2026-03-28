@@ -11,6 +11,7 @@ translations = {
         "last_search": "Previous Search: '{query}'",
         
         # Sidebar
+        "sidebar_config_auto": "Config loads from .env, then config/config.json if present; use Reload to refresh.",
         "sidebar_config": "⚙️ Configuration",
         "sidebar_model": "Model",
         "sidebar_max_papers": "Max Papers",
@@ -34,6 +35,7 @@ translations = {
         "search_max_papers_label": "Max Papers:",
         "search_max_papers_help": "Number of papers to retrieve",
         "search_button": "🔎 Search & Analyze",
+        "search_empty_query": "Please enter a search query before clicking Search.",
         
         # Results
         "results_found": "Found {count} relevant papers",
@@ -101,6 +103,7 @@ translations = {
         "last_search": "上次搜索：'{query}'",
         
         # Sidebar
+        "sidebar_config_auto": "配置优先从 .env 加载；若无则读取 config/config.json；点击「重新加载」刷新。",
         "sidebar_config": "⚙️ 配置",
         "sidebar_model": "模型",
         "sidebar_max_papers": "最大论文数",
@@ -124,6 +127,7 @@ translations = {
         "search_max_papers_label": "最大论文数：",
         "search_max_papers_help": "要检索的论文数量",
         "search_button": "🔎 搜索与分析",
+        "search_empty_query": "请先输入检索内容，再点击搜索。",
         
         # Results
         "results_found": "找到 {count} 篇相关论文",

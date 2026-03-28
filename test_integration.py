@@ -13,10 +13,11 @@ import pytest
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from src.models.paper import Paper, Author, SearchResult  # noqa: E402
+from src.models.paper import Paper, Author, SearchResult, format_author_names  # noqa: E402
 from src.llm.processor import LLMProcessor  # noqa: E402
 from src.api.semantic_scholar import SemanticScholarAPI  # noqa: E402
 from src.utils.config import AppConfig  # noqa: E402
+from src.utils.validation import clamp_paper_limit, normalize_search_query  # noqa: E402
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -82,6 +83,25 @@ class TestDataModels:
         assert paper.fields_of_study == []
         assert isinstance(paper.fields_of_study, list)
 
+    def test_format_author_names(self):
+        authors = [
+            Author(name="A"),
+            Author(name="B"),
+            Author(name="C"),
+            Author(name="D"),
+        ]
+        assert format_author_names(authors[:2], max_shown=3) == "A, B"
+        assert "et al." in format_author_names(authors, max_shown=3)
+
+    def test_normalize_search_query(self):
+        assert normalize_search_query(None) is None
+        assert normalize_search_query("   ") is None
+        assert normalize_search_query("  q  ") == "q"
+
+    def test_clamp_paper_limit(self):
+        assert clamp_paper_limit(100, 10) == 20
+        assert clamp_paper_limit(0, 5) == 1
+
     def test_search_result_to_dict(self):
         result = SearchResult(query="test", papers=[], total_results=0, search_time=0.1)
         result_dict = result.to_dict()
@@ -110,10 +130,10 @@ class TestConfiguration:
     def test_config_defaults(self):
         config = AppConfig()
         assert config.max_papers_to_retrieve == 10
-        assert config.llm_model == "DeepSeek-V3.2"
+        assert config.llm_model == "gpt-4o-mini"
         assert config.temperature == 0.1
         assert config.use_mock_data is False
-        assert config.api_base_url == "https://api.edgefn.net/v1"
+        assert config.api_base_url is None
 
     def test_config_validation_ranges(self):
         config = AppConfig(
@@ -125,7 +145,7 @@ class TestConfiguration:
     def test_available_models(self):
         config = AppConfig(openai_api_key="test")
         models = config.get_available_models()
-        assert "DeepSeek-V3.2" in models
+        assert "gpt-4o-mini" in models
         assert "gpt-4o" in models
         assert "gpt-4-turbo" in models
 

@@ -91,15 +91,12 @@ class ConfigManager:
 
             # Convert JSON data to AppConfig
             return AppConfig(
-                openai_api_key=data.get(
-                    "openai_api_key",
-                    "sk-UbmtEYogzLB5aQ5V7f7bA1Eb6bCf40BbBb670446CaE98aF4",
-                ),
+                openai_api_key=data.get("openai_api_key"),
                 anthropic_api_key=data.get("anthropic_api_key"),
                 semantic_scholar_api_key=data.get("semantic_scholar_api_key"),
                 max_papers_to_retrieve=data.get("max_papers_to_retrieve", 10),
-                api_base_url=data.get("api_base_url", "https://api.edgefn.net/v1"),
-                llm_model=data.get("llm_model", "DeepSeek-V3.2"),
+                api_base_url=data.get("api_base_url"),
+                llm_model=data.get("llm_model", "gpt-4o-mini"),
                 max_tokens=data.get("max_tokens", 2000),
                 temperature=data.get("temperature", 0.1),
                 rate_limit_delay=data.get("rate_limit_delay", 0.1),
@@ -225,8 +222,8 @@ class ConfigManager:
                 "anthropic_api_key": None,
                 "semantic_scholar_api_key": None,
                 "max_papers_to_retrieve": 10,
-                "api_base_url": "https://api.edgefn.net/v1",
-                "llm_model": "DeepSeek-V3.2",
+                "api_base_url": None,
+                "llm_model": "gpt-4o-mini",
                 "max_tokens": 2000,
                 "temperature": 0.1,
                 "rate_limit_delay": 0.1,
