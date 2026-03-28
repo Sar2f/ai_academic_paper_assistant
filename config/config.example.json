@@ -1,0 +1,14 @@
+{
+    "openai_api_key": "sk-UbmtEYogzLB5aQ5V7f7bA1Eb6bCf40BbBb670446CaE98aF4",
+    "anthropic_api_key": null,
+    "semantic_scholar_api_key": null,
+    "api_base_url": "https://api.edgefn.net/v1",
+    "max_papers_to_retrieve": 10,
+    "llm_model": "DeepSeek-V3.2",
+    "max_tokens": 2000,
+    "temperature": 0.1,
+    "rate_limit_delay": 0.1,
+    "use_mock_data": false,
+    "streamlit_port": 8501,
+    "streamlit_host": "0.0.0.0",
+}
