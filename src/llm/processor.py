@@ -24,11 +24,12 @@ class LLMProcessor:
 
     def __init__(
         self,
-        model: str = "gpt-4o",
+        model: str = "DeepSeek-V3.2",
         max_tokens: int = 2000,
         temperature: float = 0.1,
         openai_api_key: Optional[str] = None,
         anthropic_api_key: Optional[str] = None,
+        api_base_url: Optional[str] = None,
     ):
         """
         Initialize the LLM processor.
@@ -39,30 +40,21 @@ class LLMProcessor:
             temperature: Temperature for generation (lower = more factual)
             openai_api_key: OpenAI API key (falls back to env var if not provided)
             anthropic_api_key: Anthropic API key (falls back to env var if not provided)
+            api_base_url: Custom API base URL for OpenAI-compatible APIs
         """
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.openai_api_key = openai_api_key
         self.anthropic_api_key = anthropic_api_key
+        self.api_base_url = api_base_url
 
         # Initialize appropriate client based on model
         self.client = self._initialize_client()
 
     def _initialize_client(self):
         """Initialize the appropriate LLM client based on the model."""
-        if self.model.startswith("gpt-"):
-            try:
-                from openai import OpenAI
-
-                api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
-                if not api_key:
-                    raise ValueError("OPENAI_API_KEY 环境变量未设置")
-                return OpenAI(api_key=api_key)
-            except ImportError:
-                raise ImportError("未安装 OpenAI 包。请使用 pip install openai 安装")
-
-        elif self.model.startswith("claude-"):
+        if self.model.startswith("claude-"):
             try:
                 from anthropic import Anthropic
 
@@ -71,10 +63,24 @@ class LLMProcessor:
                     raise ValueError("ANTHROPIC_API_KEY 环境变量未设置")
                 return Anthropic(api_key=api_key)
             except ImportError:
-                raise ImportError("未安装 Anthropic 包。请使用 pip install anthropic 安装")
+                raise ImportError(
+                    "未安装 Anthropic 包。请使用 pip install anthropic 安装"
+                )
 
         else:
-            raise ValueError(f"不支持的模型：{self.model}")
+            # OpenAI-compatible API (supports gpt-*, DeepSeek, and other models)
+            try:
+                from openai import OpenAI
+
+                api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    raise ValueError("OPENAI_API_KEY 环境变量未设置")
+                base_url = self.api_base_url or os.getenv(
+                    "API_BASE_URL", "https://api.edgefn.net/v1"
+                )
+                return OpenAI(api_key=api_key, base_url=base_url)
+            except ImportError:
+                raise ImportError("未安装 OpenAI 包。请使用 pip install openai 安装")
 
     def generate_answer(self, query: str, papers: List[Paper]) -> LLMResponse:
         """
@@ -88,7 +94,9 @@ class LLMProcessor:
             LLMResponse with answer and citations
         """
         if not papers:
-            return LLMResponse(answer="未找到相关论文。", citations=[], error="未提供论文")
+            return LLMResponse(
+                answer="未找到相关论文。", citations=[], error="未提供论文"
+            )
 
         # Prepare context from papers
         context = self._prepare_context(papers)
@@ -97,12 +105,10 @@ class LLMProcessor:
         prompt = self._create_prompt(query, context, papers)
 
         try:
-            if self.model.startswith("gpt-"):
-                response = self._call_openai(prompt)
-            elif self.model.startswith("claude-"):
+            if self.model.startswith("claude-"):
                 response = self._call_anthropic(prompt)
             else:
-                raise ValueError(f"不支持的模型：{self.model}")
+                response = self._call_openai(prompt)
 
             # Parse response to extract citations
             answer, citations = self._parse_response(response)
@@ -112,7 +118,9 @@ class LLMProcessor:
         except Exception as e:
             logger.error(f"Error generating answer: {e}")
             return LLMResponse(
-                answer="Sorry, I encountered an error while generating the answer.", citations=[], error=str(e)
+                answer="Sorry, I encountered an error while generating the answer.",
+                citations=[],
+                error=str(e),
             )
 
     def _prepare_context(self, papers: List[Paper]) -> str:
@@ -121,7 +129,9 @@ class LLMProcessor:
 
         for i, paper in enumerate(papers, 1):
             # Format authors
-            author_names = [author.name for author in paper.authors[:3]]  # First 3 authors
+            author_names = [
+                author.name for author in paper.authors[:3]
+            ]  # First 3 authors
             if len(paper.authors) > 3:
                 author_names.append("et al.")
             authors_str = ", ".join(author_names)
@@ -176,12 +186,18 @@ Answer:"""
     def _call_openai(self, prompt: str) -> str:
         """Call OpenAI API."""
         messages = [
-            {"role": "system", "content": "You are a helpful academic research assistant."},
+            {
+                "role": "system",
+                "content": "You are a helpful academic research assistant.",
+            },
             {"role": "user", "content": prompt},
         ]
 
         response = self.client.chat.completions.create(
-            model=self.model, messages=messages, max_tokens=self.max_tokens, temperature=self.temperature
+            model=self.model,
+            messages=messages,
+            max_tokens=self.max_tokens,
+            temperature=self.temperature,
         )
 
         return response.choices[0].message.content
@@ -201,7 +217,9 @@ Answer:"""
         """Parse LLM response to extract answer and citations."""
         # Extract citations (numbers in brackets)
         citation_pattern = r"\[(\d+)\]"
-        citations = list(set(int(match) for match in re.findall(citation_pattern, response)))
+        citations = list(
+            set(int(match) for match in re.findall(citation_pattern, response))
+        )
 
         # Convert to 0-based indices for internal use
         citations = [c - 1 for c in citations if 0 < c <= 100]  # Reasonable upper bound
@@ -225,10 +243,10 @@ Provide a 2-3 sentence summary focusing on:
 Summary:"""
 
         try:
-            if self.model.startswith("gpt-"):
-                return self._call_openai(prompt)
-            elif self.model.startswith("claude-"):
+            if self.model.startswith("claude-"):
                 return self._call_anthropic(prompt)
+            else:
+                return self._call_openai(prompt)
         except Exception as e:
             logger.error(f"Error summarizing paper: {e}")
             return f"Summary unavailable: {str(e)}"

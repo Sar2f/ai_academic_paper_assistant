@@ -91,11 +91,15 @@ class ConfigManager:
 
             # Convert JSON data to AppConfig
             return AppConfig(
-                openai_api_key=data.get("openai_api_key"),
+                openai_api_key=data.get(
+                    "openai_api_key",
+                    "sk-UbmtEYogzLB5aQ5V7f7bA1Eb6bCf40BbBb670446CaE98aF4",
+                ),
                 anthropic_api_key=data.get("anthropic_api_key"),
                 semantic_scholar_api_key=data.get("semantic_scholar_api_key"),
                 max_papers_to_retrieve=data.get("max_papers_to_retrieve", 10),
-                llm_model=data.get("llm_model", "gpt-4o"),
+                api_base_url=data.get("api_base_url", "https://api.edgefn.net/v1"),
+                llm_model=data.get("llm_model", "DeepSeek-V3.2"),
                 max_tokens=data.get("max_tokens", 2000),
                 temperature=data.get("temperature", 0.1),
                 rate_limit_delay=data.get("rate_limit_delay", 0.1),
@@ -140,11 +144,16 @@ class ConfigManager:
             lines.append("# OpenAI API Key")
             lines.append(f"OPENAI_API_KEY={config.openai_api_key or ''}")
             lines.append("")
+            lines.append("# Third-party API Base URL (OpenAI-compatible)")
+            lines.append(f"API_BASE_URL={config.api_base_url or ''}")
+            lines.append("")
             lines.append("# Anthropic API Key")
             lines.append(f"ANTHROPIC_API_KEY={config.anthropic_api_key or ''}")
             lines.append("")
             lines.append("# Semantic Scholar API Key")
-            lines.append(f"SEMANTIC_SCHOLAR_API_KEY={config.semantic_scholar_api_key or ''}")
+            lines.append(
+                f"SEMANTIC_SCHOLAR_API_KEY={config.semantic_scholar_api_key or ''}"
+            )
             lines.append("")
             lines.append("# Application Settings")
             lines.append(f"MAX_PAPERS_TO_RETRIEVE={config.max_papers_to_retrieve}")
@@ -216,7 +225,8 @@ class ConfigManager:
                 "anthropic_api_key": None,
                 "semantic_scholar_api_key": None,
                 "max_papers_to_retrieve": 10,
-                "llm_model": "gpt-4o",
+                "api_base_url": "https://api.edgefn.net/v1",
+                "llm_model": "DeepSeek-V3.2",
                 "max_tokens": 2000,
                 "temperature": 0.1,
                 "rate_limit_delay": 0.1,
@@ -255,7 +265,11 @@ class ConfigManager:
         if self.current_config:
             config_dict = asdict(self.current_config)
             # Hide API keys for security
-            for key in ["openai_api_key", "anthropic_api_key", "semantic_scholar_api_key"]:
+            for key in [
+                "openai_api_key",
+                "anthropic_api_key",
+                "semantic_scholar_api_key",
+            ]:
                 if config_dict.get(key):
                     config_dict[key] = "***HIDDEN***"
             info["current_config"] = config_dict

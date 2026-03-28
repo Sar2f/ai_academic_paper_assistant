@@ -47,6 +47,7 @@ class AcademicPaperOrchestrator:
             temperature=config.temperature,
             openai_api_key=config.openai_api_key,
             anthropic_api_key=config.anthropic_api_key,
+            api_base_url=config.api_base_url,
         )
 
     def check_api_connection(self) -> dict:
@@ -74,7 +75,9 @@ class AcademicPaperOrchestrator:
 
         return result
 
-    def process_query(self, query: str, limit: Optional[int] = None) -> ProcessingResult:
+    def process_query(
+        self, query: str, limit: Optional[int] = None
+    ) -> ProcessingResult:
         """
         Process a user query through the entire pipeline.
 
@@ -90,9 +93,13 @@ class AcademicPaperOrchestrator:
         if not query or not query.strip():
             return ProcessingResult(
                 query=query,
-                search_result=SearchResult(query=query, papers=[], total_results=0, search_time=0),
+                search_result=SearchResult(
+                    query=query, papers=[], total_results=0, search_time=0
+                ),
                 llm_response=LLMResponse(
-                    answer="Please enter a valid search query.", citations=[], error="Empty query"
+                    answer="Please enter a valid search query.",
+                    citations=[],
+                    error="Empty query",
                 ),
                 processing_time=0,
                 error="Empty query",
@@ -101,17 +108,24 @@ class AcademicPaperOrchestrator:
         try:
             # Step 1: Search for papers
             search_limit = limit or self.config.max_papers_to_retrieve
-            search_result = self.semantic_scholar.search_papers(query=query, limit=search_limit)
+            search_result = self.semantic_scholar.search_papers(
+                query=query, limit=search_limit
+            )
 
             logger.info(f"Found {len(search_result.papers)} papers for query: {query}")
 
             # Step 2: Generate answer using LLM
-            llm_response = self.llm_processor.generate_answer(query=query, papers=search_result.papers)
+            llm_response = self.llm_processor.generate_answer(
+                query=query, papers=search_result.papers
+            )
 
             processing_time = time.time() - start_time
 
             return ProcessingResult(
-                query=query, search_result=search_result, llm_response=llm_response, processing_time=processing_time
+                query=query,
+                search_result=search_result,
+                llm_response=llm_response,
+                processing_time=processing_time,
             )
 
         except Exception as e:
@@ -120,8 +134,14 @@ class AcademicPaperOrchestrator:
 
             return ProcessingResult(
                 query=query,
-                search_result=SearchResult(query=query, papers=[], total_results=0, search_time=0),
-                llm_response=LLMResponse(answer=f"Error processing query: {str(e)}", citations=[], error=str(e)),
+                search_result=SearchResult(
+                    query=query, papers=[], total_results=0, search_time=0
+                ),
+                llm_response=LLMResponse(
+                    answer=f"Error processing query: {str(e)}",
+                    citations=[],
+                    error=str(e),
+                ),
                 processing_time=processing_time,
                 error=str(e),
             )
@@ -179,7 +199,9 @@ class AcademicPaperOrchestrator:
                 )
 
                 if not test_response.error:
-                    logger.info(f"LLM API is accessible (model: {self.config.llm_model})")
+                    logger.info(
+                        f"LLM API is accessible (model: {self.config.llm_model})"
+                    )
                 else:
                     logger.warning(f"LLM API test failed: {test_response.error}")
 

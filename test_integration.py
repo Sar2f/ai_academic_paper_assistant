@@ -110,18 +110,22 @@ class TestConfiguration:
     def test_config_defaults(self):
         config = AppConfig()
         assert config.max_papers_to_retrieve == 10
-        assert config.llm_model == "gpt-4o"
+        assert config.llm_model == "DeepSeek-V3.2"
         assert config.temperature == 0.1
         assert config.use_mock_data is False
+        assert config.api_base_url == "https://api.edgefn.net/v1"
 
     def test_config_validation_ranges(self):
-        config = AppConfig(openai_api_key="test-key", max_papers_to_retrieve=100)  # Out of range
+        config = AppConfig(
+            openai_api_key="test-key", max_papers_to_retrieve=100
+        )  # Out of range
         with pytest.raises(ValueError):
             config.validate()
 
     def test_available_models(self):
         config = AppConfig(openai_api_key="test")
         models = config.get_available_models()
+        assert "DeepSeek-V3.2" in models
         assert "gpt-4o" in models
         assert "gpt-4-turbo" in models
 
@@ -196,7 +200,9 @@ class TestPaperProcessing:
 
     def test_api_key_from_constructor(self):
         """Test that LLMProcessor accepts API keys from constructor."""
-        processor = LLMProcessor(model="gpt-3.5-turbo", openai_api_key="test-key-from-constructor")
+        processor = LLMProcessor(
+            model="gpt-3.5-turbo", openai_api_key="test-key-from-constructor"
+        )
         assert processor.openai_api_key == "test-key-from-constructor"
 
     def test_parse_response_citations(self):
