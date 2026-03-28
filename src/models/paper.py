@@ -12,6 +12,16 @@ class Author:
     url: Optional[str] = None
 
 
+def format_author_names(authors: List[Author], max_shown: int = 3) -> str:
+    """Comma-separated author list with 'et al.' when there are many authors."""
+    if not authors:
+        return ""
+    names = [a.name for a in authors[:max_shown]]
+    if len(authors) > max_shown:
+        names.append("et al.")
+    return ", ".join(names)
+
+
 @dataclass
 class Paper:
     """Represents an academic paper with metadata."""

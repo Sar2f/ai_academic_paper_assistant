@@ -4,6 +4,7 @@ from typing import List, Optional
 import requests
 
 from ..models.paper import Paper, SearchResult
+from ..utils.validation import normalize_search_query
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +178,18 @@ class SemanticScholarAPI:
             SearchResult object containing the papers
         """
         start_time = time.time()
-        
+
+        normalized = normalize_search_query(query)
+        if not normalized:
+            return SearchResult(
+                query=query if isinstance(query, str) else "",
+                papers=[],
+                total_results=0,
+                search_time=time.time() - start_time,
+            )
+
+        query = normalized
+
         # Use mock data if enabled
         if self.use_mock:
             logger.info(f"Using mock data for query: {query}")

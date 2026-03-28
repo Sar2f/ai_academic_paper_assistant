@@ -7,19 +7,17 @@ from dataclasses import dataclass
 class AppConfig:
     """Application configuration."""
 
-    # API Keys
-    openai_api_key: Optional[str] = (
-        "sk-UbmtEYogzLB5aQ5V7f7bA1Eb6bCf40BbBb670446CaE98aF4"
-    )
+    # API Keys — set via .env or config.json (never commit real keys)
+    openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     semantic_scholar_api_key: Optional[str] = None
 
-    # Third-party API (OpenAI-compatible)
-    api_base_url: str = "https://api.edgefn.net/v1"
+    # OpenAI-compatible base URL; None means use the OpenAI SDK default (api.openai.com)
+    api_base_url: Optional[str] = None
 
     # Application Settings
     max_papers_to_retrieve: int = 10
-    llm_model: str = "DeepSeek-V3.2"
+    llm_model: str = "gpt-4o-mini"
     max_tokens: int = 2000
     temperature: float = 0.1
     rate_limit_delay: float = 0.1
@@ -32,15 +30,14 @@ class AppConfig:
     @classmethod
     def from_env(cls) -> "AppConfig":
         """Create configuration from environment variables."""
+        base = os.getenv("API_BASE_URL", "").strip()
         return cls(
-            openai_api_key=os.getenv(
-                "OPENAI_API_KEY", "sk-UbmtEYogzLB5aQ5V7f7bA1Eb6bCf40BbBb670446CaE98aF4"
-            ),
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
             semantic_scholar_api_key=os.getenv("SEMANTIC_SCHOLAR_API_KEY"),
             max_papers_to_retrieve=int(os.getenv("MAX_PAPERS_TO_RETRIEVE", "10")),
-            api_base_url=os.getenv("API_BASE_URL", "https://api.edgefn.net/v1"),
-            llm_model=os.getenv("LLM_MODEL", "DeepSeek-V3.2"),
+            api_base_url=base if base else None,
+            llm_model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
             max_tokens=int(os.getenv("MAX_TOKENS", "2000")),
             temperature=float(os.getenv("TEMPERATURE", "0.1")),
             rate_limit_delay=float(os.getenv("RATE_LIMIT_DELAY", "0.1")),
@@ -87,7 +84,7 @@ class AppConfig:
         models = []
 
         if self.openai_api_key:
-            models.extend(["DeepSeek-V3.2", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"])
+            models.extend(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"])
 
         if self.anthropic_api_key:
             models.extend(["claude-3-5-sonnet", "claude-3-opus", "claude-3-haiku"])
