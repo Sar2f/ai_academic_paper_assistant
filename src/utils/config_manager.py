@@ -92,7 +92,6 @@ class ConfigManager:
             # Convert JSON data to AppConfig
             return AppConfig(
                 openai_api_key=data.get("openai_api_key"),
-                anthropic_api_key=data.get("anthropic_api_key"),
                 semantic_scholar_api_key=data.get("semantic_scholar_api_key"),
                 max_papers_to_retrieve=data.get("max_papers_to_retrieve", 10),
                 api_base_url=data.get("api_base_url"),
@@ -143,9 +142,6 @@ class ConfigManager:
             lines.append("")
             lines.append("# Third-party API Base URL (OpenAI-compatible)")
             lines.append(f"API_BASE_URL={config.api_base_url or ''}")
-            lines.append("")
-            lines.append("# Anthropic API Key")
-            lines.append(f"ANTHROPIC_API_KEY={config.anthropic_api_key or ''}")
             lines.append("")
             lines.append("# Semantic Scholar API Key")
             lines.append(
@@ -219,7 +215,6 @@ class ConfigManager:
             # Create empty JSON template
             template = {
                 "openai_api_key": None,
-                "anthropic_api_key": None,
                 "semantic_scholar_api_key": None,
                 "max_papers_to_retrieve": 10,
                 "api_base_url": None,
@@ -264,7 +259,6 @@ class ConfigManager:
             # Hide API keys for security
             for key in [
                 "openai_api_key",
-                "anthropic_api_key",
                 "semantic_scholar_api_key",
             ]:
                 if config_dict.get(key):

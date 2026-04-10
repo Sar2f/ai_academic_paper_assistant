@@ -28,7 +28,6 @@ class LLMProcessor:
         max_tokens: int = 2000,
         temperature: float = 0.1,
         openai_api_key: Optional[str] = None,
-        anthropic_api_key: Optional[str] = None,
         api_base_url: Optional[str] = None,
     ):
         """
@@ -39,53 +38,36 @@ class LLMProcessor:
             max_tokens: Maximum tokens for response
             temperature: Temperature for generation (lower = more factual)
             openai_api_key: OpenAI API key (falls back to env var if not provided)
-            anthropic_api_key: Anthropic API key (falls back to env var if not provided)
             api_base_url: Custom API base URL for OpenAI-compatible APIs
         """
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.openai_api_key = openai_api_key
-        self.anthropic_api_key = anthropic_api_key
         if isinstance(api_base_url, str):
             s = api_base_url.strip()
             self.api_base_url = s if s else None
         else:
             self.api_base_url = None
 
-        # Initialize appropriate client based on model
+        # Initialize OpenAI client
         self.client = self._initialize_client()
 
     def _initialize_client(self):
-        """Initialize the appropriate LLM client based on the model."""
-        if self.model.startswith("claude-"):
-            try:
-                from anthropic import Anthropic
+        """Initialize the OpenAI client."""
+        try:
+            from openai import OpenAI
 
-                api_key = self.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
-                if not api_key:
-                    raise ValueError("ANTHROPIC_API_KEY 环境变量未设置")
-                return Anthropic(api_key=api_key)
-            except ImportError:
-                raise ImportError(
-                    "未安装 Anthropic 包。请使用 pip install anthropic 安装"
-                )
-
-        else:
-            # OpenAI-compatible API (official OpenAI or compatible proxy when base URL is set)
-            try:
-                from openai import OpenAI
-
-                api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
-                if not api_key:
-                    raise ValueError("OPENAI_API_KEY 环境变量未设置")
-                env_base = os.getenv("API_BASE_URL", "").strip()
-                base_url = self.api_base_url or (env_base if env_base else None)
-                if base_url:
-                    return OpenAI(api_key=api_key, base_url=base_url)
-                return OpenAI(api_key=api_key)
-            except ImportError:
-                raise ImportError("未安装 OpenAI 包。请使用 pip install openai 安装")
+            api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY 环境变量未设置")
+            env_base = os.getenv("API_BASE_URL", "").strip()
+            base_url = self.api_base_url or (env_base if env_base else None)
+            if base_url:
+                return OpenAI(api_key=api_key, base_url=base_url)
+            return OpenAI(api_key=api_key)
+        except ImportError:
+            raise ImportError("未安装 OpenAI 包。请使用 pip install openai 安装")
 
     def generate_answer(self, query: str, papers: List[Paper]) -> LLMResponse:
         """
@@ -98,6 +80,17 @@ class LLMProcessor:
         Returns:
             LLMResponse with answer and citations
         """
+        # Validate input types
+        if not isinstance(query, str):
+            return LLMResponse(
+                answer="查询必须是字符串类型。", citations=[], error="Invalid query type"
+            )
+
+        if not isinstance(papers, list):
+            return LLMResponse(
+                answer="论文列表必须是列表类型。", citations=[], error="Invalid papers type"
+            )
+
         if not papers:
             return LLMResponse(
                 answer="未找到相关论文。", citations=[], error="未提供论文"
@@ -110,10 +103,7 @@ class LLMProcessor:
         prompt = self._create_prompt(query, context, papers)
 
         try:
-            if self.model.startswith("claude-"):
-                response = self._call_anthropic(prompt)
-            else:
-                response = self._call_openai(prompt)
+            response = self._call_openai(prompt)
 
             # Parse response to extract citations
             answer, citations = self._parse_response(response)
@@ -123,7 +113,7 @@ class LLMProcessor:
         except Exception as e:
             logger.error(f"Error generating answer: {e}")
             return LLMResponse(
-                answer="Sorry, I encountered an error while generating the answer.",
+                answer="生成答案时遇到错误。",
                 citations=[],
                 error=str(e),
             )
@@ -201,17 +191,6 @@ Answer:"""
 
         return response.choices[0].message.content
 
-    def _call_anthropic(self, prompt: str) -> str:
-        """Call Anthropic API."""
-        message = self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        return message.content[0].text
-
     def _parse_response(self, response: str) -> tuple:
         """Parse LLM response to extract answer and citations."""
         # Extract citations (numbers in brackets)
@@ -242,10 +221,7 @@ Provide a 2-3 sentence summary focusing on:
 Summary:"""
 
         try:
-            if self.model.startswith("claude-"):
-                return self._call_anthropic(prompt)
-            else:
-                return self._call_openai(prompt)
+            return self._call_openai(prompt)
         except Exception as e:
             logger.error(f"Error summarizing paper: {e}")
             return f"Summary unavailable: {str(e)}"

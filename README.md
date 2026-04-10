@@ -30,7 +30,7 @@
 
 ## 🏗️ 架构
 
-```
+```mermaid
 用户查询 → Streamlit UI → AcademicPaperOrchestrator → Semantic Scholar API → LLM Processor → 结果展示
 ```
 
@@ -81,7 +81,7 @@ nano .env  # 或使用你喜欢的编辑器
 
 其他依赖（如 Pandas、NumPy）由 Streamlit 自动引入。开发工具（Pytest、Black、Flake8）已包含。
 
-### 步骤4：环境变量
+### 步骤3：环境变量
 配置你的 `.env` 文件：
 ```env
 # OpenAI API 密钥（可选但推荐）
@@ -239,7 +239,7 @@ python test_integration.py
 
 ## 🏗️ 项目结构
 
-```
+```plaintext
 ai_academic_paper_assistant/
 ├── app.py                    # 主 Streamlit 应用程序
 ├── requirements.txt          # Python 依赖
@@ -316,13 +316,13 @@ ai_academic_paper_assistant/
 ## 📈 未来增强
 
 计划功能：
-- [ ] 支持额外的学术数据库（arXiv、PubMed）
-- [ ] 高级筛选选项（年份范围、引用次数）
-- [ ] 论文聚类和趋势分析
-- [ ] 导出结果（PDF、CSV、BibTeX）
-- [ ] 用户账户和搜索历史
-- [ ] 多语言支持
-- [ ] 批量查询处理
+- [ ] **扩展学术数据库**：支持额外的学术数据库（arXiv、PubMed等），扩大论文搜索范围
+- [ ] **高级筛选选项**：添加年份范围、引用次数、作者等高级筛选功能
+- [ ] **论文聚类和趋势分析**：自动对搜索结果进行聚类，分析研究趋势和热点
+- [ ] **多格式导出**：支持导出结果为PDF、CSV、BibTeX等格式
+- [ ] **用户账户系统**：添加用户账户和搜索历史功能，方便用户管理和回顾历史查询
+- [ ] **多语言支持**：扩展支持更多语言，包括日文、德文、法文等
+- [ ] **批量查询处理**：支持同时处理多个查询，提高研究效率
 
 ---
 

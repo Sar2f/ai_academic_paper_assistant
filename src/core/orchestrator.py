@@ -55,7 +55,6 @@ class AcademicPaperOrchestrator:
             max_tokens=config.max_tokens,
             temperature=config.temperature,
             openai_api_key=config.openai_api_key,
-            anthropic_api_key=config.anthropic_api_key,
             api_base_url=config.api_base_url,
         )
 
@@ -71,16 +70,11 @@ class AcademicPaperOrchestrator:
             "use_mock_data": self.config.use_mock_data,
         }
 
-        # Check LLM APIs if keys are configured
+        # Check OpenAI API if key is configured
         if self.config.openai_api_key:
             result["openai"] = {"configured": True, "status": "key_configured"}
         else:
             result["openai"] = {"configured": False, "status": "no_key"}
-
-        if self.config.anthropic_api_key:
-            result["anthropic"] = {"configured": True, "status": "key_configured"}
-        else:
-            result["anthropic"] = {"configured": False, "status": "no_key"}
 
         return result
 
@@ -98,6 +92,22 @@ class AcademicPaperOrchestrator:
             ProcessingResult with all data
         """
         start_time = time.time()
+
+        # Validate input types
+        if not isinstance(query, str):
+            return ProcessingResult(
+                query="",
+                search_result=SearchResult(
+                    query="", papers=[], total_results=0, search_time=0
+                ),
+                llm_response=LLMResponse(
+                    answer="查询必须是字符串类型。",
+                    citations=[],
+                    error="Invalid query type",
+                ),
+                processing_time=0,
+                error="Invalid query type",
+            )
 
         normalized_query = normalize_search_query(query)
         if not normalized_query:
