@@ -204,24 +204,4 @@ Answer:"""
 
         return response, citations
 
-    def summarize_paper(self, paper: Paper) -> str:
-        """Generate a concise summary of a single paper."""
-        prompt = f"""Please provide a concise summary of the following academic paper:
 
-Title: {paper.title}
-Authors: {', '.join([author.name for author in paper.authors[:3]])}
-Year: {paper.year or 'Unknown'}
-Abstract: {paper.abstract or 'No abstract available'}
-
-Provide a 2-3 sentence summary focusing on:
-1. The main research question or objective
-2. Key findings or contributions
-3. Methodology (if mentioned in abstract)
-
-Summary:"""
-
-        try:
-            return self._call_openai(prompt)
-        except Exception as e:
-            logger.error("Error summarizing paper: %s", e)
-            return f"Summary unavailable: {str(e)}"

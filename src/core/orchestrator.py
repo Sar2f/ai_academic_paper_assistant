@@ -174,27 +174,7 @@ class AcademicPaperOrchestrator:
                 error=str(e),
             )
 
-    def get_paper_summaries(self, papers: list[Paper]) -> dict[str, str]:
-        """
-        Generate summaries for multiple papers.
 
-        Args:
-            papers: List of papers to summarize
-
-        Returns:
-            Dictionary mapping paper IDs to summaries
-        """
-        summaries = {}
-
-        for paper in papers:
-            try:
-                summary = self.llm_processor.summarize_paper(paper)
-                summaries[paper.paper_id] = summary
-            except Exception as e:
-                logger.error("Error summarizing paper %s: %s", paper.paper_id, e)
-                summaries[paper.paper_id] = f"Summary unavailable: {str(e)}"
-
-        return summaries
 
     def validate_configuration(self) -> bool:
         """Validate that all required components are properly configured."""
