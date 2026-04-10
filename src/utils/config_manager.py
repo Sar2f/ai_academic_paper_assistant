@@ -37,14 +37,13 @@ class ConfigManager:
             "env" if .env file exists, "json" if config.json exists, "default" otherwise
         """
         if os.path.exists(self.env_file):
-            logger.info(f"Found environment file: {self.env_file}")
+            logger.info("Found environment file: %s", self.env_file)
             return "env"
-        elif os.path.exists(self.json_file):
-            logger.info(f"Found JSON config file: {self.json_file}")
+        if os.path.exists(self.json_file):
+            logger.info("Found JSON config file: %s", self.json_file)
             return "json"
-        else:
-            logger.info("No config file found, using default configuration")
-            return "default"
+        logger.info("No config file found, using default configuration")
+        return "default"
 
     def load_config(self, source: Optional[str] = None) -> AppConfig:
         """
@@ -71,9 +70,9 @@ class ConfigManager:
         # Validate configuration
         try:
             config.validate()
-            logger.info(f"Configuration loaded successfully from {source}")
+            logger.info("Configuration loaded successfully from %s", source)
         except ValueError as e:
-            logger.warning(f"Configuration validation failed: {e}")
+            logger.warning("Configuration validation failed: %s", e)
             # Still return the config, but log the warning
 
         self.current_config = config
@@ -99,15 +98,14 @@ class ConfigManager:
                 max_tokens=data.get("max_tokens", 2000),
                 temperature=data.get("temperature", 0.1),
                 rate_limit_delay=data.get("rate_limit_delay", 0.1),
-                use_mock_data=data.get("use_mock_data", False),
                 streamlit_port=data.get("streamlit_port", 8501),
                 streamlit_host=data.get("streamlit_host", "0.0.0.0"),
             )
         except FileNotFoundError:
-            logger.warning(f"JSON config file not found: {self.json_file}")
+            logger.warning("JSON config file not found: %s", self.json_file)
             return AppConfig()
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in config file: {e}")
+            logger.error("Invalid JSON in config file: %s", e)
             return AppConfig()
 
     def save_config(self, config: AppConfig, source: str) -> bool:
@@ -124,13 +122,12 @@ class ConfigManager:
         try:
             if source == "env":
                 return self._save_to_env(config)
-            elif source == "json":
+            if source == "json":
                 return self._save_to_json(config)
-            else:
-                logger.error(f"Unsupported config source: {source}")
-                return False
+            logger.error("Unsupported config source: %s", source)
+            return False
         except Exception as e:
-            logger.error(f"Failed to save configuration: {e}")
+            logger.error("Failed to save configuration: %s", e)
             return False
 
     def _save_to_env(self, config: AppConfig) -> bool:
@@ -154,7 +151,6 @@ class ConfigManager:
             lines.append(f"MAX_TOKENS={config.max_tokens}")
             lines.append(f"TEMPERATURE={config.temperature}")
             lines.append(f"RATE_LIMIT_DELAY={config.rate_limit_delay}")
-            lines.append(f"USE_MOCK_DATA={'true' if config.use_mock_data else 'false'}")
             lines.append(f"STREAMLIT_PORT={config.streamlit_port}")
             lines.append(f"STREAMLIT_HOST={config.streamlit_host}")
             lines.append("")
@@ -162,10 +158,10 @@ class ConfigManager:
             with open(self.env_file, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
 
-            logger.info(f"Configuration saved to env file: {self.env_file}")
+            logger.info("Configuration saved to env file: %s", self.env_file)
             return True
         except Exception as e:
-            logger.error(f"Failed to save env config: {e}")
+            logger.error("Failed to save env config: %s", e)
             return False
 
     def _save_to_json(self, config: AppConfig) -> bool:
@@ -179,10 +175,10 @@ class ConfigManager:
             with open(self.json_file, "w", encoding="utf-8") as f:
                 json.dump(config_dict, f, indent=2, ensure_ascii=False)
 
-            logger.info(f"Configuration saved to JSON file: {self.json_file}")
+            logger.info("Configuration saved to JSON file: %s", self.json_file)
             return True
         except Exception as e:
-            logger.error(f"Failed to save JSON config: {e}")
+            logger.error("Failed to save JSON config: %s", e)
             return False
 
     def create_config_template(self, source: str) -> bool:
@@ -203,13 +199,13 @@ class ConfigManager:
                     with open(env_example, "r", encoding="utf-8") as src:
                         with open(self.env_file, "w", encoding="utf-8") as dst:
                             dst.write(src.read())
-                    logger.info(f"Created .env file from template: {self.env_file}")
+                    logger.info("Created .env file from template: %s", self.env_file)
                     return True
                 except Exception as e:
-                    logger.error(f"Failed to create .env file: {e}")
+                    logger.error("Failed to create .env file: %s", e)
                     return False
             else:
-                logger.error(f".env.example not found: {env_example}")
+                logger.error(".env.example not found: %s", env_example)
                 return False
         elif source == "json":
             # Create empty JSON template
@@ -222,7 +218,6 @@ class ConfigManager:
                 "max_tokens": 2000,
                 "temperature": 0.1,
                 "rate_limit_delay": 0.1,
-                "use_mock_data": False,
                 "streamlit_port": 8501,
                 "streamlit_host": "0.0.0.0",
             }
@@ -230,13 +225,13 @@ class ConfigManager:
             try:
                 with open(self.json_file, "w", encoding="utf-8") as f:
                     json.dump(template, f, indent=2, ensure_ascii=False)
-                logger.info(f"Created JSON config template: {self.json_file}")
+                logger.info("Created JSON config template: %s", self.json_file)
                 return True
             except Exception as e:
-                logger.error(f"Failed to create JSON config template: {e}")
+                logger.error("Failed to create JSON config template: %s", e)
                 return False
         else:
-            logger.error(f"Unsupported config source: {source}")
+            logger.error("Unsupported config source: %s", source)
             return False
 
     def get_config_info(self) -> Dict[str, Any]:

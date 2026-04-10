@@ -111,7 +111,7 @@ class LLMProcessor:
             return LLMResponse(answer=answer, citations=citations, reasoning=None)
 
         except Exception as e:
-            logger.error(f"Error generating answer: {e}")
+            logger.error("Error generating answer: %s", e)
             return LLMResponse(
                 answer="生成答案时遇到错误。",
                 citations=[],
@@ -143,7 +143,7 @@ class LLMProcessor:
 
         return "\n".join(context_parts)
 
-    def _create_prompt(self, query: str, context: str, papers: List[Paper]) -> str:
+    def _create_prompt(self, query: str, context: str, _papers: List[Paper]) -> str:
         """Create the prompt for the LLM."""
         system_prompt = """\
 You are an AI academic research assistant. \
@@ -223,5 +223,5 @@ Summary:"""
         try:
             return self._call_openai(prompt)
         except Exception as e:
-            logger.error(f"Error summarizing paper: {e}")
+            logger.error("Error summarizing paper: %s", e)
             return f"Summary unavailable: {str(e)}"

@@ -9,6 +9,7 @@ class AppConfig:
 
     # API Keys — set via .env or config.json (never commit real keys)
     openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
     semantic_scholar_api_key: Optional[str] = None
 
     # OpenAI-compatible base URL; None means use the OpenAI SDK default (api.openai.com)
@@ -20,7 +21,6 @@ class AppConfig:
     max_tokens: int = 2000
     temperature: float = 0.1
     rate_limit_delay: float = 0.1
-    use_mock_data: bool = False  # Use real API data by default
 
     # UI Settings
     streamlit_port: int = 8501
@@ -32,6 +32,7 @@ class AppConfig:
         base = os.getenv("API_BASE_URL", "").strip()
         return cls(
             openai_api_key=os.getenv("OPENAI_API_KEY"),
+            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
             semantic_scholar_api_key=os.getenv("SEMANTIC_SCHOLAR_API_KEY"),
             max_papers_to_retrieve=int(os.getenv("MAX_PAPERS_TO_RETRIEVE", "10")),
             api_base_url=base if base else None,
@@ -39,7 +40,6 @@ class AppConfig:
             max_tokens=int(os.getenv("MAX_TOKENS", "2000")),
             temperature=float(os.getenv("TEMPERATURE", "0.1")),
             rate_limit_delay=float(os.getenv("RATE_LIMIT_DELAY", "0.1")),
-            use_mock_data=os.getenv("USE_MOCK_DATA", "false").lower() == "true",
             streamlit_port=int(os.getenv("STREAMLIT_PORT", "8501")),
             streamlit_host=os.getenv("STREAMLIT_HOST", "0.0.0.0"),
         )
@@ -53,10 +53,10 @@ class AppConfig:
             errors.append("必须设置 OPENAI_API_KEY")
 
         # Validate LLM model choice
-        if not self.openai_api_key:
-            errors.append(
-                f"模型 {self.llm_model} 需要 OPENAI_API_KEY（或兼容的第三方API密钥）"
-            )
+        if self.llm_model.startswith('claude-') and not self.anthropic_api_key:
+            errors.append(f"模型 {self.llm_model} 需要 ANTHROPIC_API_KEY")
+        elif not self.openai_api_key:
+            errors.append(f"模型 {self.llm_model} 需要 OPENAI_API_KEY")
 
         # Validate numeric ranges
         if self.max_papers_to_retrieve < 1 or self.max_papers_to_retrieve > 50:
@@ -81,5 +81,8 @@ class AppConfig:
 
         if self.openai_api_key:
             models.extend(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"])
+
+        if self.anthropic_api_key:
+            models.extend(["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"])
 
         return models

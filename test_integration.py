@@ -132,7 +132,6 @@ class TestConfiguration:
         assert config.max_papers_to_retrieve == 10
         assert config.llm_model == "gpt-4o-mini"
         assert config.temperature == 0.1
-        assert config.use_mock_data is False
         assert config.api_base_url is None
 
     def test_config_validation_ranges(self):
@@ -246,31 +245,7 @@ class TestPaperProcessing:
                 del os.environ["OPENAI_API_KEY"]
 
 
-class TestSemanticScholarAPI:
-    """Test Semantic Scholar API (with mock mode)."""
 
-    def test_mock_paper_generation(self):
-        api = SemanticScholarAPI(use_mock=True)
-        result = api.search_papers("machine learning", limit=3)
-
-        assert len(result.papers) == 3
-        assert result.total_results == 3
-        assert result.search_time >= 0
-
-    def test_mock_paper_content(self):
-        api = SemanticScholarAPI(use_mock=True)
-        result = api.search_papers("deep learning", limit=1)
-
-        paper = result.papers[0]
-        assert paper.title is not None
-        assert len(paper.authors) > 0
-
-    def test_connection_check_mock_mode(self):
-        api = SemanticScholarAPI(use_mock=True)
-        status = api.check_connection()
-
-        assert status["status"] == "mock_mode"
-        assert not status["connected"]
 
 
 def main():

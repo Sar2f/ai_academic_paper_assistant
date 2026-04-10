@@ -47,7 +47,6 @@ class AcademicPaperOrchestrator:
         self.semantic_scholar = SemanticScholarAPI(
             api_key=config.semantic_scholar_api_key,
             rate_limit_delay=config.rate_limit_delay,
-            use_mock=config.use_mock_data,
         )
 
         self.llm_processor = LLMProcessor(
@@ -67,7 +66,6 @@ class AcademicPaperOrchestrator:
         """
         result = {
             "semantic_scholar": self.semantic_scholar.check_connection(),
-            "use_mock_data": self.config.use_mock_data,
         }
 
         # Check OpenAI API if key is configured
@@ -75,6 +73,12 @@ class AcademicPaperOrchestrator:
             result["openai"] = {"configured": True, "status": "key_configured"}
         else:
             result["openai"] = {"configured": False, "status": "no_key"}
+
+        # Check Anthropic API if key is configured
+        if self.config.anthropic_api_key:
+            result["anthropic"] = {"configured": True, "status": "key_configured"}
+        else:
+            result["anthropic"] = {"configured": False, "status": "no_key"}
 
         return result
 
@@ -135,7 +139,7 @@ class AcademicPaperOrchestrator:
             )
 
             logger.info(
-                f"Found {len(search_result.papers)} papers for query: {normalized_query}"
+                "Found %d papers for query: %s", len(search_result.papers), normalized_query
             )
 
             # Step 2: Generate answer using LLM
@@ -153,7 +157,7 @@ class AcademicPaperOrchestrator:
             )
 
         except Exception as e:
-            logger.error(f"Error processing query '{normalized_query}': {e}")
+            logger.error("Error processing query '%s': %s", normalized_query, e)
             processing_time = time.time() - start_time
 
             return ProcessingResult(
@@ -187,7 +191,7 @@ class AcademicPaperOrchestrator:
                 summary = self.llm_processor.summarize_paper(paper)
                 summaries[paper.paper_id] = summary
             except Exception as e:
-                logger.error(f"Error summarizing paper {paper.paper_id}: {e}")
+                logger.error("Error summarizing paper %s: %s", paper.paper_id, e)
                 summaries[paper.paper_id] = f"Summary unavailable: {str(e)}"
 
         return summaries
@@ -224,13 +228,13 @@ class AcademicPaperOrchestrator:
 
                 if not test_response.error:
                     logger.info(
-                        f"LLM API is accessible (model: {self.config.llm_model})"
+                        "LLM API is accessible (model: %s)", self.config.llm_model
                     )
                 else:
-                    logger.warning(f"LLM API test failed: {test_response.error}")
+                    logger.warning("LLM API test failed: %s", test_response.error)
 
             return True
 
         except Exception as e:
-            logger.error(f"Configuration validation failed: {e}")
+            logger.error("Configuration validation failed: %s", e)
             return False

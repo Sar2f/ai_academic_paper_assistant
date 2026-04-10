@@ -146,8 +146,7 @@ def display_sidebar() -> None:
             st.info(f"**{t.t('sidebar_max_papers')}:** {config.max_papers_to_retrieve}")
             st.info(f"**{t.t('sidebar_temperature')}:** {config.temperature}")
 
-            if config.use_mock_data:
-                st.warning(t.t("mock_data_warning"))
+
 
             api_status = []
             if config.openai_api_key:
@@ -174,8 +173,6 @@ def display_sidebar() -> None:
                         st.success(
                             f"{t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
                         )
-                    elif connection_status.get("use_mock_data"):
-                        st.warning(t.t("network_disconnected"))
                     else:
                         st.error(
                             t.t(
@@ -192,8 +189,6 @@ def display_sidebar() -> None:
                     st.success(
                         f"{t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
                     )
-                elif st.session_state.last_connection_status.get("use_mock_data"):
-                    st.warning(t.t("network_disconnected"))
                 elif ss_status.get("status"):
                     st.error(
                         t.t(

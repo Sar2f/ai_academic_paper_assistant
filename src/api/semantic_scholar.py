@@ -15,19 +15,16 @@ class SemanticScholarAPI:
     BASE_URL = "https://api.semanticscholar.org/graph/v1"
 
     def __init__(self, api_key: Optional[str] = None,
-                 rate_limit_delay: float = 0.1,
-                 use_mock: bool = False):
+                 rate_limit_delay: float = 0.1):
         """
         Initialize the Semantic Scholar API client.
 
         Args:
             api_key: Optional API key for higher rate limits
             rate_limit_delay: Delay between requests to respect rate limits
-            use_mock: Use mock data instead of real API calls (for testing/demo)
         """
         self.api_key = api_key
         self.rate_limit_delay = rate_limit_delay
-        self.use_mock = use_mock
         self.session = requests.Session()
 
         if api_key:
@@ -40,13 +37,6 @@ class SemanticScholarAPI:
         Returns:
             Dictionary with connection status and details
         """
-        if self.use_mock:
-            return {
-                "connected": False,
-                "status": "mock_mode",
-                "message": "Using mock data mode"
-            }
-
         test_query = "test"
         test_url = f"{self.BASE_URL}/paper/search"
         test_params = {
@@ -101,60 +91,7 @@ class SemanticScholarAPI:
                 "message": f"Unknown error: {str(e)}"
             }
 
-    def _generate_mock_papers(self, query: str, limit: int) -> List[Paper]:
-        """Generate mock papers for demonstration purposes."""
-        logger.info(f"Generating mock papers for query: {query}")
 
-        mock_papers = []
-
-        for i in range(min(limit, 5)):  # Generate up to 5 mock papers
-            paper_id = f"mock_{i+1}"
-            title = f"Advances in {query}: A Comprehensive Review"
-
-            if i == 0:
-                title = f"Recent Developments in {query}"
-            elif i == 1:
-                title = f"{query} Applications in Modern Technology"
-            elif i == 2:
-                title = f"Theoretical Foundations of {query}"
-            elif i == 3:
-                title = f"Practical Implementations of {query} Algorithms"
-            elif i == 4:
-                title = f"Future Directions in {query} Research"
-
-            abstract = f"This paper provides a comprehensive overview of recent advancements in {query}. "
-            abstract += "The authors discuss key methodologies, applications, and future research directions. "
-            abstract += f"Findings suggest significant progress in {query} over the past decade."
-
-            authors = [
-                {"name": f"Researcher {chr(65+i)}", "authorId": f"author_{i+1}"},
-                {"name": f"Professor {chr(66+i)}", "authorId": f"author_{i+2}"}
-            ]
-
-            year = 2023 - (i % 3)  # Vary years between 2021-2023
-
-            paper_data = {
-                "paperId": paper_id,
-                "title": title,
-                "abstract": abstract,
-                "authors": authors,
-                "year": year,
-                "citationCount": 50 + (i * 20),
-                "referenceCount": 30 + (i * 10),
-                "url": f"https://example.com/paper/{paper_id}",
-                "venue": f"Journal of {query} Research",
-                "fieldsOfStudy": ["Computer Science", "Artificial Intelligence"],
-                "publicationDate": f"{year}-01-01"
-            }
-
-            try:
-                paper = Paper.from_semantic_scholar(paper_data)
-                mock_papers.append(paper)
-            except Exception as e:
-                logger.warning(f"Failed to create mock paper: {e}")
-                continue
-
-        return mock_papers
 
     def search_papers(
         self,
@@ -190,19 +127,6 @@ class SemanticScholarAPI:
 
         query = normalized
 
-        # Use mock data if enabled
-        if self.use_mock:
-            logger.info(f"Using mock data for query: {query}")
-            papers = self._generate_mock_papers(query, limit)
-            search_time = time.time() - start_time
-
-            return SearchResult(
-                query=query,
-                papers=papers,
-                total_results=len(papers),
-                search_time=search_time
-            )
-
         if fields is None:
             fields = [
                 "paperId", "title", "abstract", "authors", "year",
@@ -230,8 +154,6 @@ class SemanticScholarAPI:
 
         # Try up to 3 times with exponential backoff
         max_retries = 3
-        last_exception = None
-
         for attempt in range(max_retries):
             try:
                 response = self.session.get(f"{self.BASE_URL}/paper/search", params=params, timeout=10)
@@ -244,7 +166,7 @@ class SemanticScholarAPI:
                         paper = Paper.from_semantic_scholar(paper_data)
                         papers.append(paper)
                     except Exception as e:
-                        logger.warning(f"Failed to parse paper data: {e}")
+                        logger.warning("Failed to parse paper data: %s", e)
                         continue
 
                 # Respect rate limits
@@ -260,45 +182,38 @@ class SemanticScholarAPI:
                 )
 
             except requests.exceptions.HTTPError as e:
-                last_exception = e
                 status_code = e.response.status_code if e.response else 0
 
                 if status_code == 429:  # Rate limited
                     retry_delay = (2 ** attempt) * 0.5  # Exponential backoff: 0.5s, 1s, 2s
-                    logger.warning(f"Rate limited (429) on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                    logger.warning("Rate limited (429) on attempt %d/%d, retrying in %fs...", attempt + 1, max_retries, retry_delay)
                     time.sleep(retry_delay)
                 elif status_code >= 500:  # Server error
                     retry_delay = (2 ** attempt) * 0.3
-                    logger.warning(f"Server error ({status_code}) on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                    logger.warning("Server error (%d) on attempt %d/%d, retrying in %fs...", status_code, attempt + 1, max_retries, retry_delay)
                     time.sleep(retry_delay)
                 else:
                     # Client error, don't retry
-                    logger.warning(f"Client error ({status_code}) for query '{query}': {e}")
+                    logger.warning("Client error (%d) for query '%s': %s", status_code, query, e)
                     break
 
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-                last_exception = e
                 retry_delay = (2 ** attempt) * 0.5
-                logger.warning(f"Network error on attempt {attempt + 1}/{max_retries}, retrying in {retry_delay}s...")
+                logger.warning("Network error on attempt %d/%d, retrying in %fs...", attempt + 1, max_retries, retry_delay)
                 time.sleep(retry_delay)
 
             except requests.exceptions.RequestException as e:
-                last_exception = e
-                logger.warning(f"Request exception for query '{query}': {e}")
+                logger.warning("Request exception for query '%s': %s", query, e)
                 break  # Don't retry other request exceptions
 
         # If we get here, all retries failed
-        logger.warning(f"All {max_retries} attempts failed for query '{query}'")
-        logger.info(f"Falling back to mock data for query: {query}")
-
-        # Fall back to mock data if API fails
-        papers = self._generate_mock_papers(query, limit)
+        logger.warning("All %d attempts failed for query '%s'", max_retries, query)
         search_time = time.time() - start_time
 
         return SearchResult(
             query=query,
-            papers=papers,
-            total_results=len(papers),
+            papers=[],
+            total_results=0,
             search_time=search_time
         )
 
@@ -333,8 +248,8 @@ class SemanticScholarAPI:
 
             return paper
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error getting paper details for {paper_id}: {e}")
+        except Exception as e:
+            logger.error("Error getting paper details for %s: %s", paper_id, e)
             return None
 
     def get_related_papers(self, paper_id: str, limit: int = 10) -> List[Paper]:
@@ -369,7 +284,7 @@ class SemanticScholarAPI:
                         paper = Paper.from_semantic_scholar(ref_data["citedPaper"])
                         papers.append(paper)
                     except Exception as e:
-                        logger.warning(f"Failed to parse related paper data: {e}")
+                        logger.warning("Failed to parse related paper data: %s", e)
                         continue
 
             # Respect rate limits
@@ -378,5 +293,5 @@ class SemanticScholarAPI:
             return papers
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error getting related papers for {paper_id}: {e}")
+            logger.error("Error getting related papers for %s: %s", paper_id, e)
             return []
