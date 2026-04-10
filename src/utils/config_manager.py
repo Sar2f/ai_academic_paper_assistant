@@ -18,10 +18,7 @@ class ConfigManager:
         Args:
             config_dir: Optional custom configuration directory
         """
-        self.config_dir = config_dir or os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config"
-        )
-        os.makedirs(self.config_dir, exist_ok=True)
+        self.config_dir = config_dir or os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
         # Configuration file paths
         self.env_file = ".env"
