@@ -4,30 +4,26 @@ from typing import List, Optional
 import requests
 
 from .base_api import BaseAPI
-from ..models.paper import Paper, SearchResult
+from ..models.paper import Paper, SearchResult, Author
 from ..utils.validation import normalize_search_query
 
 logger = logging.getLogger(__name__)
 
 
-class SemanticScholarAPI(BaseAPI):
-    """Client for interacting with the Semantic Scholar API."""
+class ArxivAPI(BaseAPI):
+    """Client for interacting with the arXiv API."""
 
-    BASE_URL = "https://api.semanticscholar.org/graph/v1"
+    BASE_URL = "http://export.arxiv.org/api"
 
-    def __init__(self, api_key: Optional[str] = None,
-                 rate_limit_delay: float = 0.1):
+    def __init__(self, api_key: Optional[str] = None, rate_limit_delay: float = 0.5):
         """
-        Initialize the Semantic Scholar API client.
+        Initialize the arXiv API client.
 
         Args:
-            api_key: Optional API key for higher rate limits
+            api_key: Optional API key (not required for arXiv)
             rate_limit_delay: Delay between requests to respect rate limits
         """
         super().__init__(api_key=api_key, rate_limit_delay=rate_limit_delay)
-
-        if api_key:
-            self.session.headers.update({"x-api-key": api_key})
 
     def check_connection(self) -> dict:
         """
@@ -37,11 +33,10 @@ class SemanticScholarAPI(BaseAPI):
             Dictionary with connection status and details
         """
         test_query = "test"
-        test_url = f"{self.BASE_URL}/paper/search"
+        test_url = f"{self.BASE_URL}/query"
         test_params = {
-            "query": test_query,
-            "limit": 1,
-            "fields": "paperId,title"
+            "search_query": f"all:{test_query}",
+            "max_results": 1
         }
 
         try:
@@ -54,16 +49,10 @@ class SemanticScholarAPI(BaseAPI):
                     "connected": True,
                     "status": "connected",
                     "message": (
-                        f"Connected to Semantic Scholar API "
+                        f"Connected to arXiv API "
                         f"(response time: {response_time:.2f}s)"
                     ),
                     "response_time": response_time
-                }
-            elif response.status_code == 429:
-                return {
-                    "connected": False,
-                    "status": "rate_limited",
-                    "message": "Rate limited - API is accessible but rate limit reached"
                 }
             else:
                 return {
@@ -90,8 +79,6 @@ class SemanticScholarAPI(BaseAPI):
                 "message": f"Unknown error: {str(e)}"
             }
 
-
-
     def search_papers(
         self,
         query: str,
@@ -102,7 +89,7 @@ class SemanticScholarAPI(BaseAPI):
         sort_by: str = "relevance"
     ) -> SearchResult:
         """
-        Search for papers using the Semantic Scholar API.
+        Search for papers using the arXiv API.
 
         Args:
             query: Search query string
@@ -127,44 +114,68 @@ class SemanticScholarAPI(BaseAPI):
 
         query = normalized
 
-        if fields is None:
-            fields = [
-                "paperId", "title", "abstract", "authors", "year",
-                "citationCount", "referenceCount", "url", "venue",
-                "fieldsOfStudy", "publicationDate"
-            ]
-
-        params = {
-            "query": query,
-            "limit": limit,
-            "fields": ",".join(fields),
-            "offset": 0,
-            "sort": sort_by
-        }
-
-        # Add filters if provided
-        filters = []
+        # Build search query
+        search_query = f"all:{query}"
         if year_range:
             min_year, max_year = year_range
-            filters.append(f"year:[{min_year} TO {max_year}]")
-        if min_citation_count is not None:
-            filters.append(f"citationCount:>={min_citation_count}")
+            search_query += f" AND submittedDate:[{min_year}0101 TO {max_year}1231]"
 
-        if filters:
-            params["filter"] = ",".join(filters)
+        # Map sort_by to arXiv API sort parameters
+        sort_map = {
+            "relevance": "relevance",
+            "citedness": "relevance",  # arXiv doesn't support citation count sorting
+            "recent": "submittedDate"
+        }
+        sort_field = sort_map.get(sort_by, "relevance")
+        params = {
+            "search_query": search_query,
+            "max_results": limit,
+            "sortBy": sort_field,
+            "sortOrder": "descending"
+        }
 
         # Try up to 3 times with exponential backoff
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = self.session.get(f"{self.BASE_URL}/paper/search", params=params, timeout=10)
+                response = self.session.get(f"{self.BASE_URL}/query", params=params, timeout=10)
                 response.raise_for_status()
-                data = response.json()
+
+                # Parse XML response
+                import xml.etree.ElementTree as ET
+                root = ET.fromstring(response.content)
 
                 papers = []
-                for paper_data in data.get("data", []):
+                for entry in root.findall('{http://www.w3.org/2005/Atom}entry'):
                     try:
-                        paper = Paper.from_semantic_scholar(paper_data)
+                        paper_id = entry.find('{http://www.w3.org/2005/Atom}id').text
+                        title = entry.find('{http://www.w3.org/2005/Atom}title').text
+                        abstract = entry.find('{http://www.w3.org/2005/Atom}summary').text
+
+                        # Parse authors
+                        authors = []
+                        for author in entry.findall('{http://www.w3.org/2005/Atom}author'):
+                            author_name = author.find('{http://www.w3.org/2005/Atom}name').text
+                            authors.append(author_name)
+
+                        # Parse published date
+                        published = entry.find('{http://www.w3.org/2005/Atom}published').text
+                        year = int(published.split('-')[0]) if published else None
+
+                        # Create Paper object
+                        paper = Paper(
+                            paper_id=paper_id,
+                            title=title,
+                            abstract=abstract,
+                            authors=[Author(name=name) for name in authors],
+                            year=year,
+                            citation_count=None,  # arXiv API doesn't provide citation count
+                            reference_count=None,  # arXiv API doesn't provide reference count
+                            url=paper_id,
+                            venue="arXiv",
+                            fields_of_study=[],  # arXiv API doesn't provide fields of study
+                            publication_date=None
+                        )
                         papers.append(paper)
                     except Exception as e:
                         logger.warning("Failed to parse paper data: %s", e)
@@ -178,7 +189,7 @@ class SemanticScholarAPI(BaseAPI):
                 return SearchResult(
                     query=query,
                     papers=papers,
-                    total_results=data.get("total", 0),
+                    total_results=len(papers),
                     search_time=search_time
                 )
 
@@ -217,5 +228,3 @@ class SemanticScholarAPI(BaseAPI):
             total_results=0,
             search_time=search_time
         )
-
-

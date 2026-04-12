@@ -12,6 +12,9 @@ from typing import Optional
 from dataclasses import dataclass
 
 from ..api.semantic_scholar import SemanticScholarAPI
+from ..api.arxiv_api import ArxivAPI
+from ..api.pubmed_api import PubMedAPI
+from ..api.openalex_api import OpenAlexAPI
 from ..llm.processor import LLMProcessor, LLMResponse
 from ..models.paper import Paper, SearchResult
 from ..utils.config import AppConfig
@@ -49,6 +52,20 @@ class AcademicPaperOrchestrator:
             rate_limit_delay=config.rate_limit_delay,
         )
 
+        self.arxiv_api = ArxivAPI(
+            rate_limit_delay=config.rate_limit_delay * 2,  # arXiv API has stricter rate limits
+        )
+
+        self.pubmed_api = PubMedAPI(
+            api_key=config.pubmed_api_key,
+            rate_limit_delay=config.rate_limit_delay * 2,  # PubMed API has stricter rate limits
+        )
+
+        self.openalex_api = OpenAlexAPI(
+            api_key=config.openalex_api_key,
+            rate_limit_delay=config.rate_limit_delay * 2,  # OpenAlex API has stricter rate limits
+        )
+
         self.llm_processor = LLMProcessor(
             model=config.llm_model,
             max_tokens=config.max_tokens,
@@ -66,6 +83,9 @@ class AcademicPaperOrchestrator:
         """
         result = {
             "semantic_scholar": self.semantic_scholar.check_connection(),
+            "arxiv": self.arxiv_api.check_connection(),
+            "pubmed": self.pubmed_api.check_connection(),
+            "openalex": self.openalex_api.check_connection(),
         }
 
         # Check OpenAI API if key is configured
@@ -130,21 +150,123 @@ class AcademicPaperOrchestrator:
             )
 
         try:
+            # Step 0: Translate query to academic language
+            # Check if query is in Chinese
+            is_chinese = any('\u4e00' <= char <= '\u9fff' for char in normalized_query)
+
+            # Translate to English for most APIs, except for Chinese-specific APIs
+            if is_chinese:
+                translated_query = self.llm_processor.translate_query(normalized_query, target_language="English")
+                # For Chinese-specific APIs, use Chinese translation
+                chinese_translated_query = self.llm_processor.translate_query(normalized_query, target_language="Chinese")
+            else:
+                # If query is already in English, just make it more academic
+                translated_query = self.llm_processor.translate_query(normalized_query, target_language="English")
+                chinese_translated_query = translated_query
+
+            logger.info(f"Original query: {normalized_query}")
+            logger.info(f"Translated query: {translated_query}")
+            logger.info(f"Chinese translated query: {chinese_translated_query}")
+
             # Step 1: Search for papers
-            search_limit = clamp_paper_limit(
+            total_limit = clamp_paper_limit(
                 limit, self.config.max_papers_to_retrieve
             )
-            search_result = self.semantic_scholar.search_papers(
-                query=normalized_query, limit=search_limit
-            )
+
+            # Try APIs in order of priority
+            apis = [
+                ("Semantic Scholar", self.semantic_scholar),
+                ("arXiv", self.arxiv_api),
+                ("PubMed", self.pubmed_api),
+                ("OpenAlex", self.openalex_api)
+            ]
+
+            # Calculate papers per API for balanced search
+            num_apis = len(apis)
+            papers_per_api = total_limit // num_apis
+            remaining_papers = total_limit % num_apis
+
+            all_papers = []
+            total_search_time = 0
+
+            for i, (api_name, api) in enumerate(apis):
+                try:
+                    # Calculate limit for this API
+                    api_limit = papers_per_api
+                    if i < remaining_papers:
+                        api_limit += 1
+
+                    # Split limit between authoritative and recent papers
+                    # Get 60% authoritative papers (by citation count) and 40% recent papers
+                    auth_limit = max(1, int(api_limit * 0.6))
+                    recent_limit = max(1, api_limit - auth_limit)
+
+                    # Use appropriate query language for each API
+                    if api_name in ["CNKI"]:  # Chinese-specific APIs
+                        current_query = chinese_translated_query
+                    else:  # Most APIs work better with English
+                        current_query = translated_query
+
+                    # Search for authoritative papers (by citation count)
+                    logger.info(f"Trying {api_name} API for authoritative papers: {current_query} (limit: {auth_limit})")
+                    auth_result = api.search_papers(
+                        query=current_query, limit=auth_limit, sort_by="citedness"
+                    )
+
+                    # Search for recent papers (by publication date)
+                    logger.info(f"Trying {api_name} API for recent papers: {current_query} (limit: {recent_limit})")
+                    recent_result = api.search_papers(
+                        query=current_query, limit=recent_limit, sort_by="recent"
+                    )
+
+                    # Combine results
+                    if auth_result.papers:
+                        all_papers.extend(auth_result.papers)
+                        total_search_time += auth_result.search_time
+                        logger.info(f"Found {len(auth_result.papers)} authoritative papers using {api_name} API")
+                    if recent_result.papers:
+                        all_papers.extend(recent_result.papers)
+                        total_search_time += recent_result.search_time
+                        logger.info(f"Found {len(recent_result.papers)} recent papers using {api_name} API")
+
+                    if not auth_result.papers and not recent_result.papers:
+                        logger.info(f"{api_name} API returned no results")
+                except Exception as api_error:
+                    logger.warning(f"Error using {api_name} API: {api_error}")
+                    continue
+
+            # Deduplicate papers based on title
+            seen_titles = set()
+            unique_papers = []
+            for paper in all_papers:
+                if paper.title not in seen_titles:
+                    seen_titles.add(paper.title)
+                    unique_papers.append(paper)
+
+            # Limit to total_limit papers
+            final_papers = unique_papers[:total_limit]
+
+            # If no API returned results
+            if not final_papers:
+                logger.warning("All APIs returned no results")
+                search_result = SearchResult(
+                    query=normalized_query, papers=[], total_results=0, search_time=0
+                )
+            else:
+                search_result = SearchResult(
+                    query=normalized_query,
+                    papers=final_papers,
+                    total_results=len(final_papers),
+                    search_time=total_search_time
+                )
 
             logger.info(
-                "Found %d papers for query: %s", len(search_result.papers), normalized_query
+                "Found %d unique papers for query: %s", len(final_papers), normalized_query
             )
 
             # Step 2: Generate answer using LLM
             llm_response = self.llm_processor.generate_answer(
-                query=normalized_query, papers=search_result.papers
+                query=normalized_query, papers=final_papers
             )
 
             processing_time = time.time() - start_time
@@ -160,19 +282,56 @@ class AcademicPaperOrchestrator:
             logger.error("Error processing query '%s': %s", normalized_query, e)
             processing_time = time.time() - start_time
 
-            return ProcessingResult(
-                query=normalized_query,
-                search_result=SearchResult(
-                    query=query, papers=[], total_results=0, search_time=0
-                ),
-                llm_response=LLMResponse(
-                    answer=f"Error processing query: {str(e)}",
-                    citations=[],
+            # Try all APIs as fallback
+            search_result = None
+            for api_name, api in [
+                ("arXiv", self.arxiv_api),
+                ("PubMed", self.pubmed_api),
+                ("OpenAlex", self.openalex_api)
+            ]:
+                try:
+                    # Use appropriate query language for each API
+                    if api_name in ["CNKI"]:  # Chinese-specific APIs
+                        current_query = chinese_translated_query
+                    else:  # Most APIs work better with English
+                        current_query = translated_query
+
+                    result = api.search_papers(
+                        query=current_query, limit=clamp_paper_limit(limit, self.config.max_papers_to_retrieve)
+                    )
+                    if result.papers:
+                        search_result = result
+                        logger.info(f"Fallback: Found {len(result.papers)} papers using {api_name} API")
+                        break
+                except Exception as fallback_error:
+                    logger.warning(f"Fallback error with {api_name} API: {fallback_error}")
+                    continue
+
+            if search_result:
+                llm_response = self.llm_processor.generate_answer(
+                    query=normalized_query, papers=search_result.papers
+                )
+                return ProcessingResult(
+                    query=normalized_query,
+                    search_result=search_result,
+                    llm_response=llm_response,
+                    processing_time=processing_time,
+                    error=f"Primary API failed, using fallback API: {str(e)}",
+                )
+            else:
+                return ProcessingResult(
+                    query=normalized_query,
+                    search_result=SearchResult(
+                        query=query, papers=[], total_results=0, search_time=0
+                    ),
+                    llm_response=LLMResponse(
+                        answer=f"Error processing query: {str(e)}",
+                        citations=[],
+                        error=str(e),
+                    ),
+                    processing_time=processing_time,
                     error=str(e),
-                ),
-                processing_time=processing_time,
-                error=str(e),
-            )
+                )
 
 
 
@@ -181,10 +340,28 @@ class AcademicPaperOrchestrator:
         try:
             self.config.validate()
 
-            # Test Semantic Scholar API
-            test_result = self.semantic_scholar.search_papers("test", limit=1)
-            if test_result.total_results is not None:
-                logger.info("Semantic Scholar API is accessible")
+            # Test all APIs
+            apis = [
+                ("Semantic Scholar", self.semantic_scholar),
+                ("arXiv", self.arxiv_api),
+                ("PubMed", self.pubmed_api),
+                ("OpenAlex", self.openalex_api)
+            ]
+
+            accessible_apis = []
+            for api_name, api in apis:
+                try:
+                    test_result = api.search_papers("test", limit=1)
+                    if test_result.total_results is not None:
+                        accessible_apis.append(api_name)
+                        logger.info(f"{api_name} API is accessible")
+                except Exception as e:
+                    logger.warning(f"{api_name} API test failed: {e}")
+
+            if accessible_apis:
+                logger.info(f"Accessible APIs: {', '.join(accessible_apis)}")
+            else:
+                logger.warning("No APIs are accessible")
 
             # Test LLM (if API key is available)
             if self.config.openai_api_key or self.config.anthropic_api_key:

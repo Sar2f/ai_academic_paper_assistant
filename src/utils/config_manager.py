@@ -88,7 +88,10 @@ class ConfigManager:
             # Convert JSON data to AppConfig
             return AppConfig(
                 openai_api_key=data.get("openai_api_key"),
+                anthropic_api_key=data.get("anthropic_api_key"),
                 semantic_scholar_api_key=data.get("semantic_scholar_api_key"),
+                pubmed_api_key=data.get("pubmed_api_key"),
+                openalex_api_key=data.get("openalex_api_key"),
                 max_papers_to_retrieve=data.get("max_papers_to_retrieve", 10),
                 api_base_url=data.get("api_base_url"),
                 llm_model=data.get("llm_model", "gpt-4o-mini"),

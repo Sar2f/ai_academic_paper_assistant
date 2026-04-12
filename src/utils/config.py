@@ -11,6 +11,8 @@ class AppConfig:
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     semantic_scholar_api_key: Optional[str] = None
+    pubmed_api_key: Optional[str] = None
+    openalex_api_key: Optional[str] = None
 
     # OpenAI-compatible base URL; None means use the OpenAI SDK default (api.openai.com)
     api_base_url: Optional[str] = None
@@ -34,6 +36,8 @@ class AppConfig:
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
             semantic_scholar_api_key=os.getenv("SEMANTIC_SCHOLAR_API_KEY"),
+            pubmed_api_key=os.getenv("PUBMED_API_KEY"),
+            openalex_api_key=os.getenv("OPENALEX_API_KEY"),
             max_papers_to_retrieve=int(os.getenv("MAX_PAPERS_TO_RETRIEVE", "10")),
             api_base_url=base if base else None,
             llm_model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
@@ -48,15 +52,11 @@ class AppConfig:
         """Validate configuration."""
         errors = []
 
-        # Check if OpenAI API key is set
-        if not self.openai_api_key:
-            errors.append("必须设置 OPENAI_API_KEY")
-
         # Validate LLM model choice
         if self.llm_model.startswith('claude-') and not self.anthropic_api_key:
             errors.append(f"模型 {self.llm_model} 需要 ANTHROPIC_API_KEY")
-        elif not self.openai_api_key:
-            errors.append(f"模型 {self.llm_model} 需要 OPENAI_API_KEY")
+        elif not self.openai_api_key and not self.anthropic_api_key:
+            errors.append("必须设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY")
 
         # Validate numeric ranges
         if self.max_papers_to_retrieve < 1 or self.max_papers_to_retrieve > 50:

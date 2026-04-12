@@ -157,6 +157,15 @@ def display_sidebar() -> None:
                 api_status.append(t.t("api_semantic_scholar_pro"))
             else:
                 api_status.append(t.t("api_semantic_scholar_free"))
+            api_status.append("arXiv API")
+            if config.pubmed_api_key:
+                api_status.append("PubMed API (key)")
+            else:
+                api_status.append("PubMed API (free)")
+            if config.openalex_api_key:
+                api_status.append("OpenAlex API (key)")
+            else:
+                api_status.append("OpenAlex API (free)")
 
             st.info(f"**{t.t('sidebar_api_status')}:** {', '.join(api_status)}")
 
@@ -168,33 +177,95 @@ def display_sidebar() -> None:
                     with st.spinner(t.t("network_checking")):
                         connection_status = st.session_state.orchestrator.check_api_connection()
 
+                    # Check Semantic Scholar API
                     ss_status = connection_status.get("semantic_scholar", {})
                     if ss_status.get("connected"):
                         st.success(
-                            f"{t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
+                            f"Semantic Scholar: {t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
                         )
                     else:
                         st.error(
-                            t.t(
-                                "network_connection_issue",
-                                message=ss_status.get("message", "Unknown error"),
-                            )
+                            f"Semantic Scholar: {t.t('network_connection_issue', message=ss_status.get('message', 'Unknown error'))}"
+                        )
+
+                    # Check arXiv API
+                    arxiv_status = connection_status.get("arxiv", {})
+                    if arxiv_status.get("connected"):
+                        st.success(
+                            f"arXiv: {t.t('network_connected')} ({arxiv_status.get('response_time', 0):.2f}s)"
+                        )
+                    else:
+                        st.error(
+                            f"arXiv: {t.t('network_connection_issue', message=arxiv_status.get('message', 'Unknown error'))}"
+                        )
+
+                    # Check PubMed API
+                    pubmed_status = connection_status.get("pubmed", {})
+                    if pubmed_status.get("connected"):
+                        st.success(
+                            f"PubMed: {t.t('network_connected')} ({pubmed_status.get('response_time', 0):.2f}s)"
+                        )
+                    else:
+                        st.error(
+                            f"PubMed: {t.t('network_connection_issue', message=pubmed_status.get('message', 'Unknown error'))}"
+                        )
+
+                    # Check OpenAlex API
+                    openalex_status = connection_status.get("openalex", {})
+                    if openalex_status.get("connected"):
+                        st.success(
+                            f"OpenAlex: {t.t('network_connected')} ({openalex_status.get('response_time', 0):.2f}s)"
+                        )
+                    else:
+                        st.error(
+                            f"OpenAlex: {t.t('network_connection_issue', message=openalex_status.get('message', 'Unknown error'))}"
                         )
 
                     st.session_state.last_connection_status = connection_status
 
             if "last_connection_status" in st.session_state:
+                # Check Semantic Scholar API
                 ss_status = st.session_state.last_connection_status.get("semantic_scholar", {})
                 if ss_status.get("connected"):
                     st.success(
-                        f"{t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
+                        f"Semantic Scholar: {t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
                     )
                 elif ss_status.get("status"):
                     st.error(
-                        t.t(
-                            "network_connection_issue",
-                            message=ss_status.get("message", "Unknown error"),
-                        )
+                        f"Semantic Scholar: {t.t('network_connection_issue', message=ss_status.get('message', 'Unknown error'))}"
+                    )
+
+                # Check arXiv API
+                arxiv_status = st.session_state.last_connection_status.get("arxiv", {})
+                if arxiv_status.get("connected"):
+                    st.success(
+                        f"arXiv: {t.t('network_connected')} ({arxiv_status.get('response_time', 0):.2f}s)"
+                    )
+                elif arxiv_status.get("status"):
+                    st.error(
+                        f"arXiv: {t.t('network_connection_issue', message=arxiv_status.get('message', 'Unknown error'))}"
+                    )
+
+                # Check PubMed API
+                pubmed_status = st.session_state.last_connection_status.get("pubmed", {})
+                if pubmed_status.get("connected"):
+                    st.success(
+                        f"PubMed: {t.t('network_connected')} ({pubmed_status.get('response_time', 0):.2f}s)"
+                    )
+                elif pubmed_status.get("status"):
+                    st.error(
+                        f"PubMed: {t.t('network_connection_issue', message=pubmed_status.get('message', 'Unknown error'))}"
+                    )
+
+                # Check OpenAlex API
+                openalex_status = st.session_state.last_connection_status.get("openalex", {})
+                if openalex_status.get("connected"):
+                    st.success(
+                        f"OpenAlex: {t.t('network_connected')} ({openalex_status.get('response_time', 0):.2f}s)"
+                    )
+                elif openalex_status.get("status"):
+                    st.error(
+                        f"OpenAlex: {t.t('network_connection_issue', message=openalex_status.get('message', 'Unknown error'))}"
                     )
 
         st.markdown("---")

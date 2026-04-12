@@ -210,7 +210,7 @@ class TestPaperProcessing:
             prompt = processor._create_prompt("Test query", context, mock_papers)
 
             assert "Test query" in prompt
-            assert "CRITICAL INSTRUCTIONS" in prompt
+            assert "重要指示" in prompt
         finally:
             if original_openai_key:
                 os.environ["OPENAI_API_KEY"] = original_openai_key

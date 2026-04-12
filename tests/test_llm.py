@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""
+Test script to test the LLM functionality with the third-party model service.
+"""
+
+import sys
+import os
+
+# Add src directory to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+from src.llm.processor import LLMProcessor
+from src.models.paper import Paper, Author
+
+
+def test_llm():
+    """Test LLM functionality with the third-party model service."""
+    print("Testing LLM functionality...")
+
+    # Create LLM processor with the third-party model service
+    llm_processor = LLMProcessor(
+        model="DeepSeek-V3.2",
+        max_tokens=2000,
+        temperature=0.1,
+        openai_api_key="sk-3K2lpMnhcUDP7kSNFa74E893Fc2946C39f721cF538A275D5",
+        api_base_url="https://api.edgefn.net/v1"
+    )
+
+    # Create test papers
+    test_papers = [
+        Paper(
+            paper_id="1",
+            title="Advances in Neural Networks",
+            abstract="This paper discusses recent advances in neural network architectures and their applications in various domains.",
+            authors=[Author(name="John Doe"), Author(name="Jane Smith")],
+            year=2023,
+            citation_count=100,
+            reference_count=50,
+            url="https://example.com/paper1",
+            venue="Neural Computation",
+            fields_of_study=["Computer Science", "AI"],
+            publication_date=None
+        ),
+        Paper(
+            paper_id="2",
+            title="Transformer Models for NLP",
+            abstract="A survey of transformer models and their applications in natural language processing tasks such as translation, summarization, and question answering.",
+            authors=[Author(name="Alice Johnson")],
+            year=2024,
+            citation_count=75,
+            reference_count=30,
+            url="https://example.com/paper2",
+            venue="Journal of NLP Research",
+            fields_of_study=["Computer Science", "NLP"],
+            publication_date=None
+        )
+    ]
+
+    # Test generate_answer
+    print("Testing generate_answer...")
+    try:
+        response = llm_processor.generate_answer("What are the recent advances in neural networks?", test_papers)
+        print(f"Answer: {response.answer}")
+        print(f"Citations: {response.citations}")
+        if response.error:
+            print(f"Error: {response.error}")
+    except Exception as e:
+        print(f"Error generating answer: {e}")
+
+    print("\nTest completed.")
+
+
+if __name__ == "__main__":
+    test_llm()
