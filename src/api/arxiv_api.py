@@ -1,5 +1,6 @@
 import time
 import logging
+import xml.etree.ElementTree as ET
 from typing import List, Optional
 import requests
 
@@ -15,7 +16,7 @@ class ArxivAPI(BaseAPI):
 
     BASE_URL = "http://export.arxiv.org/api"
 
-    def __init__(self, api_key: Optional[str] = None, rate_limit_delay: float = 0.5):
+    def __init__(self, api_key: Optional[str] = None, rate_limit_delay: float = 3.0):
         """
         Initialize the arXiv API client.
 
@@ -141,8 +142,6 @@ class ArxivAPI(BaseAPI):
                 response = self.session.get(f"{self.BASE_URL}/query", params=params, timeout=10)
                 response.raise_for_status()
 
-                # Parse XML response
-                import xml.etree.ElementTree as ET
                 root = ET.fromstring(response.content)
 
                 papers = []

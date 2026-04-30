@@ -124,7 +124,7 @@ class PubMedAPI(BaseAPI):
         search_query = query
         if year_range:
             min_year, max_year = year_range
-            search_query += f" AND {min_year}[Date - Publication] : {max_year}[Date - Publication]"
+            search_query += f" AND ({min_year}:{max_year})[Date - Publication]"
 
         # First, search for paper IDs
         search_url = f"{self.BASE_URL}/esearch.fcgi"

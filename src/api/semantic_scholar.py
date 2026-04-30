@@ -134,12 +134,20 @@ class SemanticScholarAPI(BaseAPI):
                 "fieldsOfStudy", "publicationDate"
             ]
 
+        # Map sort_by to Semantic Scholar API sort parameters
+        sort_map = {
+            "relevance": "relevance",
+            "citedness": "citedness",
+            "recent": "recency"
+        }
+        sort_field = sort_map.get(sort_by, "relevance")
+
         params = {
             "query": query,
             "limit": limit,
             "fields": ",".join(fields),
             "offset": 0,
-            "sort": sort_by
+            "sort": sort_field
         }
 
         # Add filters if provided

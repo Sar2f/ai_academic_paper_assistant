@@ -24,49 +24,80 @@ APP_CSS = """
         font-size: 2.5rem;
         color: #1E3A8A;
         text-align: center;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     .sub-header {
-        font-size: 1.2rem;
-        color: #4B5563;
+        font-size: 1.1rem;
+        color: #6B7280;
         text-align: center;
         margin-bottom: 2rem;
+        font-weight: 400;
     }
     .paper-card {
-        padding: 1rem;
-        border-radius: 0.5rem;
+        padding: 1.25rem;
+        border-radius: 0.75rem;
         border-left: 4px solid #3B82F6;
-        background-color: #F8FAFC;
+        background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
         margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-top: 1px solid #E5E7EB;
+    }
+    .paper-card:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
     }
     .citation {
         background-color: #EFF6FF;
         padding: 0.25rem 0.5rem;
         border-radius: 0.25rem;
-        font-weight: bold;
+        font-weight: 600;
         color: #1D4ED8;
+        font-size: 0.9em;
     }
     .success-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #D1FAE5;
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
         border-left: 4px solid #10B981;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
     }
     .warning-box {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: #FEF3C7;
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
         border-left: 4px solid #F59E0B;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(245, 158, 11, 0.1);
     }
     .answer-container {
-        padding: 1.5rem;
-        border-radius: 0.5rem;
+        padding: 1.5rem 2rem;
+        border-radius: 0.75rem;
         background-color: #FFFFFF;
         border: 1px solid #E5E7EB;
         margin-bottom: 2rem;
-        line-height: 1.6;
+        line-height: 1.7;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    .analysis-section {
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, #FFFFFF 0%, #F0F9FF 100%);
+        border: 1px solid #E0F2FE;
+        margin-bottom: 1.5rem;
+    }
+    .followup-card {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background-color: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        margin-bottom: 0.75rem;
     }
 </style>
 """
@@ -172,101 +203,37 @@ def display_sidebar() -> None:
             st.markdown("---")
             st.markdown(f"#### {t.t('network_status')}")
 
-            if st.session_state.orchestrator:
-                if st.button(t.t("network_check")):
-                    with st.spinner(t.t("network_checking")):
-                        connection_status = st.session_state.orchestrator.check_api_connection()
-
-                    # Check Semantic Scholar API
-                    ss_status = connection_status.get("semantic_scholar", {})
-                    if ss_status.get("connected"):
-                        st.success(
-                            f"Semantic Scholar: {t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
-                        )
-                    else:
-                        st.error(
-                            f"Semantic Scholar: {t.t('network_connection_issue', message=ss_status.get('message', 'Unknown error'))}"
-                        )
-
-                    # Check arXiv API
-                    arxiv_status = connection_status.get("arxiv", {})
-                    if arxiv_status.get("connected"):
-                        st.success(
-                            f"arXiv: {t.t('network_connected')} ({arxiv_status.get('response_time', 0):.2f}s)"
-                        )
-                    else:
-                        st.error(
-                            f"arXiv: {t.t('network_connection_issue', message=arxiv_status.get('message', 'Unknown error'))}"
-                        )
-
-                    # Check PubMed API
-                    pubmed_status = connection_status.get("pubmed", {})
-                    if pubmed_status.get("connected"):
-                        st.success(
-                            f"PubMed: {t.t('network_connected')} ({pubmed_status.get('response_time', 0):.2f}s)"
-                        )
-                    else:
-                        st.error(
-                            f"PubMed: {t.t('network_connection_issue', message=pubmed_status.get('message', 'Unknown error'))}"
-                        )
-
-                    # Check OpenAlex API
-                    openalex_status = connection_status.get("openalex", {})
-                    if openalex_status.get("connected"):
-                        st.success(
-                            f"OpenAlex: {t.t('network_connected')} ({openalex_status.get('response_time', 0):.2f}s)"
-                        )
-                    else:
-                        st.error(
-                            f"OpenAlex: {t.t('network_connection_issue', message=openalex_status.get('message', 'Unknown error'))}"
-                        )
-
-                    st.session_state.last_connection_status = connection_status
+            if st.button(t.t("network_check")):
+                with st.spinner(t.t("network_checking")):
+                    connection_status = st.session_state.orchestrator.check_api_connection()
+                st.session_state.last_connection_status = connection_status
 
             if "last_connection_status" in st.session_state:
-                # Check Semantic Scholar API
-                ss_status = st.session_state.last_connection_status.get("semantic_scholar", {})
+                connection_status = st.session_state.last_connection_status
+
+                ss_status = connection_status.get("semantic_scholar", {})
                 if ss_status.get("connected"):
-                    st.success(
-                        f"Semantic Scholar: {t.t('network_connected')} ({ss_status.get('response_time', 0):.2f}s)"
-                    )
+                    st.success(f"✅ Semantic Scholar ({ss_status.get('response_time', 0):.2f}s)")
                 elif ss_status.get("status"):
-                    st.error(
-                        f"Semantic Scholar: {t.t('network_connection_issue', message=ss_status.get('message', 'Unknown error'))}"
-                    )
+                    st.error(f"❌ Semantic Scholar")
 
-                # Check arXiv API
-                arxiv_status = st.session_state.last_connection_status.get("arxiv", {})
+                arxiv_status = connection_status.get("arxiv", {})
                 if arxiv_status.get("connected"):
-                    st.success(
-                        f"arXiv: {t.t('network_connected')} ({arxiv_status.get('response_time', 0):.2f}s)"
-                    )
+                    st.success(f"✅ arXiv ({arxiv_status.get('response_time', 0):.2f}s)")
                 elif arxiv_status.get("status"):
-                    st.error(
-                        f"arXiv: {t.t('network_connection_issue', message=arxiv_status.get('message', 'Unknown error'))}"
-                    )
+                    st.error(f"❌ arXiv")
 
-                # Check PubMed API
-                pubmed_status = st.session_state.last_connection_status.get("pubmed", {})
+                pubmed_status = connection_status.get("pubmed", {})
                 if pubmed_status.get("connected"):
-                    st.success(
-                        f"PubMed: {t.t('network_connected')} ({pubmed_status.get('response_time', 0):.2f}s)"
-                    )
+                    st.success(f"✅ PubMed ({pubmed_status.get('response_time', 0):.2f}s)")
                 elif pubmed_status.get("status"):
-                    st.error(
-                        f"PubMed: {t.t('network_connection_issue', message=pubmed_status.get('message', 'Unknown error'))}"
-                    )
+                    st.error(f"❌ PubMed")
 
-                # Check OpenAlex API
-                openalex_status = st.session_state.last_connection_status.get("openalex", {})
+                openalex_status = connection_status.get("openalex", {})
                 if openalex_status.get("connected"):
-                    st.success(
-                        f"OpenAlex: {t.t('network_connected')} ({openalex_status.get('response_time', 0):.2f}s)"
-                    )
+                    st.success(f"✅ OpenAlex ({openalex_status.get('response_time', 0):.2f}s)")
                 elif openalex_status.get("status"):
-                    st.error(
-                        f"OpenAlex: {t.t('network_connection_issue', message=openalex_status.get('message', 'Unknown error'))}"
-                    )
+                    st.error(f"❌ OpenAlex")
 
         st.markdown("---")
         st.markdown(f"### {t.t('sidebar_how_it_works')}")
@@ -354,6 +321,88 @@ def display_paper_card(paper: Paper, index: int) -> None:
         st.markdown("</div>", unsafe_allow_html=True)
 
 
+def display_cross_paper_analysis(result: Any) -> None:
+    t = get_translator()
+    analysis = result.cross_paper_analysis
+
+    if not analysis or not analysis.research_trends:
+        return
+
+    st.markdown("---")
+    st.markdown(f"### 🔬 {t.t('cross_paper_analysis_title')}")
+    st.markdown('<div class="analysis-section">', unsafe_allow_html=True)
+
+    st.markdown(analysis.research_trends)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if analysis.paper_analyses and result.search_result.papers:
+        st.markdown("---")
+        st.markdown(f"### 📝 {t.t('cross_paper_individual_title')}")
+        st.caption(t.t("cross_paper_individual_hint"))
+
+        for i, (paper_analysis, paper) in enumerate(zip(
+            analysis.paper_analyses[:5],
+            result.search_result.papers[:5]
+        )):
+            with st.expander(f"📄 [{i+1}] {paper.title[:60]}..."):
+                col1, col2 = st.columns(2)
+                with col1:
+                    if paper_analysis.keywords:
+                        st.markdown(f"**🔑 {t.t('paper_analysis_keywords')}:**")
+                        st.markdown(", ".join(paper_analysis.keywords))
+                    if paper_analysis.research_method:
+                        st.markdown(f"\n**🔬 {t.t('paper_analysis_method')}:** {paper_analysis.research_method}")
+                with col2:
+                    if paper_analysis.contributions:
+                        st.markdown(f"**✨ {t.t('paper_analysis_contributions')}:**")
+                        st.markdown(paper_analysis.contributions[:150] + "..." if len(paper_analysis.contributions) > 150 else paper_analysis.contributions)
+                    if paper_analysis.limitations:
+                        st.markdown(f"\n**⚠️ {t.t('paper_analysis_limitations')}:**")
+                        st.markdown(paper_analysis.limitations[:150] + "..." if len(paper_analysis.limitations) > 150 else paper_analysis.limitations)
+
+
+def display_followup_section(result: Any) -> None:
+    t = get_translator()
+
+    if "followup_history" not in st.session_state:
+        st.session_state.followup_history = []
+
+    st.markdown("---")
+    st.markdown(f"### 💬 {t.t('followup_title')}")
+
+    followup_query = st.text_input(
+        t.t("followup_input_label"),
+        placeholder=t.t("followup_input_placeholder"),
+        key="followup_input"
+    )
+
+    if st.button(t.t("followup_button"), type="secondary", use_container_width=True):
+        if followup_query.strip():
+            with st.spinner(t.t("followup_processing")):
+                if st.session_state.orchestrator:
+                    followup_response = st.session_state.orchestrator.process_followup(
+                        followup_query=followup_query,
+                        papers=result.search_result.papers,
+                        previous_answer=result.llm_response.answer
+                    )
+
+                    st.session_state.followup_history.append({
+                        "query": followup_query,
+                        "answer": followup_response.answer,
+                        "error": followup_response.error
+                    })
+
+    if st.session_state.followup_history:
+        for i, followup in enumerate(st.session_state.followup_history, 1):
+            with st.expander(f"🔍 {t.t('followup_question')} {i}: {followup['query'][:50]}..."):
+                if followup.get("error"):
+                    st.error(followup["answer"])
+                else:
+                    answer_text = re.sub(r"\[(\d+)\]", r'<span class="citation">[\1]</span>', followup["answer"])
+                    st.markdown(answer_text, unsafe_allow_html=True)
+
+
 def display_results(result: Any) -> None:
     t = get_translator()
 
@@ -371,6 +420,8 @@ def display_results(result: Any) -> None:
         unsafe_allow_html=True,
     )
 
+    display_cross_paper_analysis(result)
+
     st.markdown(f"### {t.t('results_answer')}")
     st.markdown('<div class="answer-container">', unsafe_allow_html=True)
 
@@ -380,25 +431,11 @@ def display_results(result: Any) -> None:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    if result.llm_response.citations:
-        st.markdown(
-            f"### {t.t('results_references')} (cited {len(result.llm_response.citations)} papers)"
-        )
+    display_followup_section(result)
 
-        cited_papers = []
-        for idx in result.llm_response.citations:
-            if idx < len(result.search_result.papers):
-                cited_papers.append((idx + 1, result.search_result.papers[idx]))
-
-        cited_papers.sort(key=lambda x: x[0])
-
-        for citation_num, paper in cited_papers:
-            display_paper_card(paper, citation_num)
-
-    st.markdown(f"### {t.t('results_references')} ({len(result.search_result.papers)} papers total)")
+    st.markdown(f"### {t.t('results_references')} ({len(result.search_result.papers)} papers)")
 
     cited_indices = set(result.llm_response.citations)
+
     for idx, paper in enumerate(result.search_result.papers, 1):
-        if idx - 1 in cited_indices:
-            continue
         display_paper_card(paper, idx)

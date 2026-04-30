@@ -24,7 +24,6 @@ wheels/
 venv/
 env/
 ENV/
-.env
 .venv
 
 # IDE
@@ -62,3 +61,29 @@ secrets.txt
 
 # Streamlit
 .streamlit/
+
+# Testing
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

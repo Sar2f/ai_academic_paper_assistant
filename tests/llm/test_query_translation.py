@@ -5,16 +5,20 @@ Test script to test query translation functionality.
 
 import sys
 import os
+import logging
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from src.llm.processor import LLMProcessor
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def test_query_translation():
     """Test query translation functionality."""
-    print("Testing query translation functionality...")
+    logger.info("Testing query translation functionality...")
 
     # Create LLM processor
     llm_processor = LLMProcessor(
@@ -33,18 +37,18 @@ def test_query_translation():
     ]
 
     for query in test_queries:
-        print(f"\nOriginal query: {query}")
+        logger.info(f"\nOriginal query: {query}")
 
         # Translate to English
         english_translation = llm_processor.translate_query(query, target_language="English")
-        print(f"English translation: {english_translation}")
+        logger.info(f"English translation: {english_translation}")
 
         # Translate to Chinese academic language
         chinese_translation = llm_processor.translate_query(query, target_language="Chinese")
-        print(f"Chinese academic translation: {chinese_translation}")
+        logger.info(f"Chinese academic translation: {chinese_translation}")
 
     # Test English queries
-    print("\n\nTesting English queries...")
+    logger.info("\n\nTesting English queries...")
     english_queries = [
         "how do neural networks work",
         "what are the applications of machine learning",
@@ -52,13 +56,13 @@ def test_query_translation():
     ]
 
     for query in english_queries:
-        print(f"\nOriginal query: {query}")
+        logger.info(f"\nOriginal query: {query}")
 
         # Make it more academic
         academic_translation = llm_processor.translate_query(query, target_language="English")
-        print(f"Academic translation: {academic_translation}")
+        logger.info(f"Academic translation: {academic_translation}")
 
-    print("\nTest completed.")
+    logger.info("\nTest completed.")
 
 
 if __name__ == "__main__":

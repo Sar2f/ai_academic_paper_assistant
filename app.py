@@ -9,7 +9,7 @@ import logging
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.ui.streamlit_components import (
+from src.interface.streamlit_components import (
     APP_CSS,
     display_header,
     display_results,

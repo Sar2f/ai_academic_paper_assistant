@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Test script to test the balanced search functionality.
+Test script to test the balanced authority and recent search functionality.
 """
 
 import sys
 import os
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -16,10 +17,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from src.core.orchestrator import AcademicPaperOrchestrator
 from src.utils.config_manager import ConfigManager
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def test_balanced_search():
-    """Test the balanced search functionality."""
-    print("Testing balanced search functionality...")
+
+def test_balanced_authority_recent_search():
+    """Test the balanced authority and recent search functionality."""
+    logger.info("Testing balanced authority and recent search functionality...")
 
     # Load configuration
     config_manager = ConfigManager()
@@ -36,24 +40,24 @@ def test_balanced_search():
     ]
 
     for query, limit in test_queries:
-        print(f"\nTesting search for: {query} (limit: {limit})")
+        logger.info(f"\nTesting search for: {query} (limit: {limit})")
         try:
             result = orchestrator.process_query(query, limit=limit)
-            print(f"Found {len(result.search_result.papers)} papers")
+            logger.info(f"Found {len(result.search_result.papers)} papers")
             if result.search_result.papers:
-                print("First 5 papers:")
+                logger.info("First 5 papers:")
                 for i, paper in enumerate(result.search_result.papers[:5]):
-                    print(f"{i+1}. {paper.title} ({paper.venue})")
+                    logger.info(f"{i+1}. {paper.title} ({paper.venue}, {paper.year})")
             if result.llm_response.error:
-                print(f"LLM Error: {result.llm_response.error}")
+                logger.info(f"LLM Error: {result.llm_response.error}")
             else:
-                print("LLM response generated successfully")
-                print(f"Answer preview: {result.llm_response.answer[:100]}...")
+                logger.info("LLM response generated successfully")
+                logger.info(f"Answer preview: {result.llm_response.answer[:100]}...")
         except Exception as e:
-            print(f"Error processing query: {e}")
+            logger.info(f"Error processing query: {e}")
 
-    print("\nTest completed.")
+    logger.info("\nTest completed.")
 
 
 if __name__ == "__main__":
-    test_balanced_search()
+    test_balanced_authority_recent_search()

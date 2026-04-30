@@ -36,17 +36,16 @@ class OpenAlexAPI(BaseAPI):
         test_url = f"{self.BASE_URL}/works"
         test_params = {
             "search": test_query,
-            "per-page": 1,
+            "per_page": 1,
             "filter": "abstract:test"
         }
 
-        headers = {}
         if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            test_params["api_key"] = self.api_key
 
         try:
             start_time = time.time()
-            response = self.session.get(test_url, params=test_params, headers=headers, timeout=5)
+            response = self.session.get(test_url, params=test_params, timeout=5)
             response_time = time.time() - start_time
 
             if response.status_code == 200:
@@ -121,32 +120,36 @@ class OpenAlexAPI(BaseAPI):
 
         # Map sort_by to OpenAlex API sort parameters
         sort_map = {
-            "relevance": "relevance",
+            "relevance": None,
             "citedness": "cited_by_count:desc",
-            "recent": "created:desc"
+            "recent": "publication_year:desc"
         }
-        sort_field = sort_map.get(sort_by, "relevance")
+        sort_field = sort_map.get(sort_by, None)
         # Build search parameters
         search_params = {
             "search": query,
-            "per-page": limit,
-            "filter": f"abstract:{query}",
-            "sort": sort_field
+            "per_page": limit,
         }
 
+        if sort_field:
+            search_params["sort"] = sort_field
+
+        filters = []
         if year_range:
             min_year, max_year = year_range
-            search_params["filter"] += f",publication_year:>={min_year},publication_year:<={max_year}"
+            filters.extend([f"publication_year:>={min_year}", f"publication_year:<={max_year}"])
 
         if min_citation_count:
-            search_params["filter"] += f",cited_by_count:>={min_citation_count}"
+            filters.append(f"cited_by_count:>={min_citation_count}")
 
-        headers = {}
+        if filters:
+            search_params["filter"] = ",".join(filters)
+
         if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            search_params["api_key"] = self.api_key
 
         try:
-            response = self.session.get(f"{self.BASE_URL}/works", params=search_params, headers=headers, timeout=10)
+            response = self.session.get(f"{self.BASE_URL}/works", params=search_params, timeout=10)
             response.raise_for_status()
             data = response.json()
 

@@ -4,7 +4,7 @@ import logging
 from typing import List, Optional
 from dataclasses import dataclass
 
-from ..models.paper import Paper, format_author_names
+from ..models.paper import Paper, format_author_names, PaperAnalysis, CrossPaperAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class LLMProcessor:
         context = self._prepare_context(papers)
 
         # Generate prompt
-        prompt = self._create_prompt(query, context, papers)
+        prompt = self._create_prompt(query, context)
 
         try:
             response = self._call_openai(prompt)
@@ -128,6 +128,301 @@ class LLMProcessor:
             logger.error("Error generating answer: %s", e)
             return LLMResponse(
                 answer="生成答案时遇到错误。",
+                citations=[],
+                error=str(e),
+            )
+
+    def analyze_single_paper(self, paper: Paper) -> PaperAnalysis:
+        """
+        Extract structured analysis from a single paper.
+
+        Args:
+            paper: The paper to analyze
+
+        Returns:
+            PaperAnalysis with extracted information
+        """
+        if not self.client:
+            return PaperAnalysis()
+
+        system_prompt = """你是一个学术论文分析助手。请从以下论文中提取结构化信息。
+
+请用JSON格式返回，字段如下：
+- keywords: 3-5个核心关键词列表
+- research_method: 研究方法（如：实证研究、理论分析、综述、案例研究、实验等）
+- limitations: 主要研究局限性（1-2句话）
+- contributions: 主要贡献（1-2句话）
+
+论文信息：
+标题：{title}
+摘要：{abstract}
+
+请仅返回JSON，不要有其他内容。"""
+
+        try:
+            prompt = system_prompt.format(
+                title=paper.title,
+                abstract=paper.abstract[:2000] if paper.abstract else "无摘要"
+            )
+
+            messages = [
+                {"role": "system", "content": "You are a helpful academic research assistant."},
+                {"role": "user", "content": prompt},
+            ]
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=500,
+                temperature=0.1,
+            )
+
+            import json
+            result_text = response.choices[0].message.content.strip()
+
+            result_text = re.sub(r'^```json\s*', '', result_text)
+            result_text = re.sub(r'^```\s*', '', result_text)
+            result_text = re.sub(r'\s*```$', '', result_text)
+
+            analysis_data = json.loads(result_text)
+
+            return PaperAnalysis(
+                keywords=analysis_data.get("keywords", []),
+                research_method=analysis_data.get("research_method"),
+                limitations=analysis_data.get("limitations"),
+                contributions=analysis_data.get("contributions"),
+            )
+
+        except Exception as e:
+            logger.warning("Error analyzing paper '%s': %s", paper.title[:50], e)
+            return PaperAnalysis()
+
+    def cross_paper_analysis(self, query: str, papers: List[Paper]) -> CrossPaperAnalysis:
+        """
+        Perform comprehensive cross-paper analysis.
+
+        Args:
+            query: The original user query
+            papers: List of papers to analyze
+
+        Returns:
+            CrossPaperAnalysis with comprehensive insights
+        """
+        if not self.client:
+            return CrossPaperAnalysis(
+                research_trends="需要API密钥才能进行分析",
+                methodology_comparison="",
+                research_gaps="",
+                future_directions="",
+            )
+
+        if not papers:
+            return CrossPaperAnalysis(
+                research_trends="未找到相关论文",
+                methodology_comparison="",
+                research_gaps="",
+                future_directions="",
+            )
+
+        context = self._prepare_context(papers)
+
+        system_prompt = """你是一个AI学术研究助手，负责对一组相关论文进行跨论文综合分析。
+
+请基于提供的论文集合，进行以下分析：
+
+1. **研究趋势（Research Trends）**：
+   - 该领域近年的发展趋势
+   - 研究热点的演变
+   - 技术或方法的进步
+
+2. **方法论对比（Methodology Comparison）**：
+   - 不同论文采用的主要研究方法
+   - 各方法的优缺点
+   - 方法选择的依据
+
+3. **研究空白（Research Gaps）**：
+   - 当前研究中的不足或未被解决的问题
+   - 理论或实践中的gap
+   - 不同研究结论矛盾的地方
+
+4. **未来研究方向（Future Directions）**：
+   - 基于现有研究的未来研究建议
+   - 可能的研究突破口
+   - 值得探索的新领域
+
+5. **关键发现（Key Findings）**：
+   - 列出3-5个最重要的研究发现
+
+请用中文详细回答以上各个方面。
+
+论文列表：
+{context}
+
+查询：{query}
+
+分析结果："""
+
+        try:
+            prompt = system_prompt.format(context=context, query=query)
+
+            messages = [
+                {"role": "system", "content": "You are a helpful academic research assistant."},
+                {"role": "user", "content": prompt},
+            ]
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=2000,
+                temperature=0.1,
+            )
+
+            analysis_text = response.choices[0].message.content
+
+            paper_analyses = []
+            for paper in papers[:5]:
+                analysis = self.analyze_single_paper(paper)
+                paper_analyses.append(analysis)
+
+            return CrossPaperAnalysis(
+                research_trends=self._extract_section(analysis_text, "研究趋势"),
+                methodology_comparison=self._extract_section(analysis_text, "方法论对比"),
+                research_gaps=self._extract_section(analysis_text, "研究空白"),
+                future_directions=self._extract_section(analysis_text, "未来研究方向"),
+                key_findings=self._extract_key_findings(analysis_text),
+                paper_analyses=paper_analyses,
+            )
+
+        except Exception as e:
+            logger.error("Error in cross-paper analysis: %s", e)
+            return CrossPaperAnalysis(
+                research_trends=f"分析过程中遇到错误：{str(e)}",
+                methodology_comparison="",
+                research_gaps="",
+                future_directions="",
+            )
+
+    def _extract_section(self, text: str, section_name: str) -> str:
+        """Extract a section from the analysis text."""
+        import re
+
+        section_patterns = [
+            rf"{section_name}[:：]?\s*\n(.*?)(?=\n\d+\.|未来研究方向|关键发现|$)",
+            rf"{section_name}[:：]\s*(.*?)(?=\n[A-Z]|未来方向|$)",
+        ]
+
+        for pattern in section_patterns:
+            match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+            if match:
+                section_text = match.group(1).strip()
+                section_text = re.sub(r'\n+', '\n', section_text)
+                return section_text
+
+        return text
+
+    def _extract_key_findings(self, text: str) -> List[str]:
+        """Extract key findings as a list."""
+        import re
+
+        findings_pattern = r"关键发现[:：]?\s*\n?(.*?)(?=\n未来|$)"
+        match = re.search(findings_pattern, text, re.DOTALL | re.IGNORECASE)
+
+        if match:
+            findings_text = match.group(1)
+            findings = re.findall(r'[-•\d]\s*(.+)', findings_text)
+            if findings:
+                return [f.strip() for f in findings if f.strip()]
+
+        return []
+
+    def handle_followup(self, followup_query: str, papers: List[Paper],
+                       previous_answer: str = "") -> LLMResponse:
+        """
+        Handle follow-up questions about search results.
+
+        Args:
+            followup_query: User's follow-up question
+            papers: List of papers from original search
+            previous_answer: Previous answer to maintain context
+
+        Returns:
+            LLMResponse with answer and citations
+        """
+        if not self.client:
+            return LLMResponse(
+                answer="需要API密钥才能进行追问。",
+                citations=[],
+                error="No API key provided"
+            )
+
+        if not papers:
+            return LLMResponse(
+                answer="没有可用的论文信息来回答你的问题。",
+                citations=[],
+                error="No papers available"
+            )
+
+        context = self._prepare_context(papers)
+
+        system_prompt = """\
+你是一个AI学术研究助手，专门处理用户的追问。
+
+用户之前搜索了相关论文并获得了回答，现在他们提出了一个跟进问题。
+
+请遵循以下指示：
+1. 严格基于提供的论文回答问题，不要使用任何外部知识。
+2. 如果用户要求"找到类似论文"，请分析现有论文的主题，建议搜索方向。
+3. 如果用户询问某篇论文的细节，请深入分析该论文的内容。
+4. 如果用户询问研究方法的具体细节，请基于论文中的方法部分进行解释。
+5. 使用引用格式 [1], [2] 等，其中数字对应于提供列表中的论文编号。
+6. 如果论文中不包含回答问题的信息，请明确说明。
+
+之前的回答（供参考）：
+{previous_answer}
+
+论文列表：
+{context}
+
+追问：{followup_query}
+
+回答："""
+
+        try:
+            prompt = system_prompt.format(
+                previous_answer=previous_answer[:1000] if previous_answer else "无",
+                context=context,
+                followup_query=followup_query
+            )
+
+            messages = [
+                {"role": "system", "content": "You are a helpful academic research assistant."},
+                {"role": "user", "content": prompt},
+            ]
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+            )
+
+            answer_text = response.choices[0].message.content
+
+            citations = list(
+                set(int(match) for match in re.findall(r"\[(\d+)\]", answer_text))
+            )
+            citations = [c - 1 for c in citations if 0 < c <= len(papers)]
+
+            return LLMResponse(
+                answer=answer_text,
+                citations=citations,
+                reasoning=None
+            )
+
+        except Exception as e:
+            logger.error("Error handling follow-up: %s", e)
+            return LLMResponse(
+                answer=f"处理追问时遇到错误：{str(e)}",
                 citations=[],
                 error=str(e),
             )
@@ -157,7 +452,7 @@ class LLMProcessor:
 
         return "\n".join(context_parts)
 
-    def _create_prompt(self, query: str, context: str, _papers: List[Paper]) -> str:
+    def _create_prompt(self, query: str, context: str) -> str:
         """Create the prompt for the LLM."""
         system_prompt = """\
 你是一个 AI 学术研究助手。\

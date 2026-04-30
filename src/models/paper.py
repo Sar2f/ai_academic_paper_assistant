@@ -107,3 +107,25 @@ class SearchResult:
             "total_results": self.total_results,
             "search_time": self.search_time,
         }
+
+
+@dataclass
+class PaperAnalysis:
+    """AI-extracted structured analysis for a single paper."""
+
+    keywords: List[str] = field(default_factory=list)
+    research_method: Optional[str] = None
+    limitations: Optional[str] = None
+    contributions: Optional[str] = None
+
+
+@dataclass
+class CrossPaperAnalysis:
+    """Comprehensive cross-paper analysis results."""
+
+    research_trends: str
+    methodology_comparison: str
+    research_gaps: str
+    future_directions: str
+    key_findings: List[str] = field(default_factory=list)
+    paper_analyses: List[PaperAnalysis] = field(default_factory=list)

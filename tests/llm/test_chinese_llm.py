@@ -5,6 +5,7 @@ Test script to test Chinese LLM functionality.
 
 import sys
 import os
+import logging
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
@@ -12,10 +13,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from src.llm.processor import LLMProcessor
 from src.models.paper import Paper, Author
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def test_chinese_llm():
     """Test LLM functionality with Chinese queries."""
-    print("Testing Chinese LLM functionality...")
+    logger.info("Testing Chinese LLM functionality...")
 
     # Create LLM processor with the third-party model service
     llm_processor = LLMProcessor(
@@ -57,17 +61,17 @@ def test_chinese_llm():
     ]
 
     # Test generate_answer with Chinese query
-    print("Testing generate_answer with Chinese query...")
+    logger.info("Testing generate_answer with Chinese query...")
     try:
         response = llm_processor.generate_answer("神经网络的最新进展是什么？", test_papers)
-        print(f"Answer: {response.answer}")
-        print(f"Citations: {response.citations}")
+        logger.info(f"Answer: {response.answer}")
+        logger.info(f"Citations: {response.citations}")
         if response.error:
-            print(f"Error: {response.error}")
+            logger.info(f"Error: {response.error}")
     except Exception as e:
-        print(f"Error generating answer: {e}")
+        logger.info(f"Error generating answer: {e}")
 
-    print("\nTest completed.")
+    logger.info("\nTest completed.")
 
 
 if __name__ == "__main__":
