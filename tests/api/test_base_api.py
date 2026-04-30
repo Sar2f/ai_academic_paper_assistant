@@ -1,11 +1,10 @@
 """Unit tests for BaseAPI refactoring and API Manager deduplication."""
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from src.api.base_api import BaseAPI
 from src.core.api_manager import _normalise_title
-from src.models.paper import Paper, Author, SearchResult
+from src.models.paper import Paper, SearchResult
 
 
 # ---------------------------------------------------------------------------
@@ -27,7 +26,7 @@ class ConcreteAPI(BaseAPI):
             query=query,
             papers=[Paper(
                 paper_id="1", title="Test Paper", abstract="Abstract",
-                authors=[], year=2024, citation_count=0, reference_count=0, url=None,
+                authors=[], year=2024, citation_count=0, reference_count=0,
             )],
             total_results=1,
             search_time=0,
@@ -83,7 +82,7 @@ class TestBaseAPI:
 
         api._fetch_raw = failing_fetch_raw
         with patch("src.api.base_api.time.sleep"):
-            result = api._search_with_retry("test", 10, None, None, None, "relevance")
+            api._search_with_retry("test", 10, None, None, None, "relevance")
         assert call_count == 2  # 1 fail + 1 success
 
 

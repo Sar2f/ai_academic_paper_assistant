@@ -67,7 +67,6 @@ class TestDataModels:
             year=2024,
             citation_count=0,
             reference_count=0,
-            url=None,
         )
         assert paper.fields_of_study == []
         assert isinstance(paper.fields_of_study, list)

@@ -8,8 +8,6 @@ retry logic and normalisation are handled by BaseAPI.
 import logging
 from typing import List, Optional
 
-import requests
-
 from .base_api import BaseAPI
 from ..models.paper import Paper, SearchResult, Author
 
@@ -98,11 +96,8 @@ class OpenAlexAPI(BaseAPI):
                     authors=authors,
                     year=year,
                     citation_count=citation_count,
-                    reference_count=None,
                     url=url,
                     venue=venue,
-                    fields_of_study=[],
-                    publication_date=None,
                 ))
             except Exception as e:
                 logger.warning("Failed to parse paper data: %s", e)

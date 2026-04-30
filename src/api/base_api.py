@@ -5,7 +5,6 @@ Provides common retry logic, connection checking, and rate limiting
 so subclasses only need to implement the API-specific parsing.
 """
 
-import re
 import time
 import logging
 from typing import List, Optional

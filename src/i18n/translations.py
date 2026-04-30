@@ -50,23 +50,17 @@ translations = {
 
         # Warnings and errors
         "warning_no_llm_keys": "⚠️ No LLM API keys detected. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env file to enable AI-powered answers. Semantic Scholar search will still work.",
-        "error_initialization": "Application initialization failed: {error}",
         "error_search": "Error: {error}",
         "searching": "🔍 Searching for academic papers...",
 
         # API status messages
         "api_openai": "✅ OpenAI",
         "api_anthropic": "✅ Anthropic",
-        "api_semantic_scholar": "✅ Semantic Scholar",
         "api_semantic_scholar_pro": "✅ Semantic Scholar (Pro)",
         "api_semantic_scholar_free": "✅ Semantic Scholar (Free)",
 
         # Footer
         "footer": "AI Academic Paper Assistant • Zero Hallucination Guarantee • Built with ❤️ using Streamlit, Semantic Scholar, and LLMs",
-
-        # Configuration
-        "config_use_mock_data": "Use Mock Data",
-        "config_use_mock_data_help": "Use mock data instead of real API calls (for testing)",
 
         # Language selection
         "language": "Language",
@@ -74,34 +68,15 @@ translations = {
         "language_zh": "中文",
 
         # Config management
-        "config_source": "Config Source",
-        "config_source_env": ".env File",
-        "config_source_json": "JSON Config",
-        "config_source_default": "Default",
-        "config_manage": "Manage Configuration",
-        "config_create_template": "Create Template",
-        "config_save_current": "Save Current",
         "config_reload": "Reload",
-        "config_current_source": "Current Source: {source}",
 
         # Network status
         "network_status": "🌐 Network Status",
-        "network_connected": "✅ Connected to Semantic Scholar API",
-        "network_disconnected": "❌ Not connected - using mock data",
         "network_check": "Check Connection",
         "network_checking": "Checking connection...",
-        "network_connection_issue": "Connection issue: {message}",
-
-        # Mock data warning
-        "mock_data_warning": "⚠️ Using mock data. Set USE_MOCK_DATA=false for real API search.",
 
         # Cross-paper analysis
         "cross_paper_analysis_title": "📊 Cross-Paper Analysis",
-        "cross_paper_trends": "Research Trends",
-        "cross_paper_methodology": "Methodology Comparison",
-        "cross_paper_gaps": "Research Gaps",
-        "cross_paper_future": "Future Research Directions",
-        "cross_paper_key_findings": "Key Findings",
         "cross_paper_individual_title": "Individual Paper Analysis",
         "paper_analysis_keywords": "Keywords",
         "paper_analysis_method": "Research Method",
@@ -164,23 +139,17 @@ translations = {
 
         # Warnings and errors
         "warning_no_llm_keys": "⚠️ 未检测到 LLM API 密钥。请在 .env 文件中设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY 以启用 AI 驱动的答案。Semantic Scholar 搜索仍可工作。",
-        "error_initialization": "应用程序初始化失败：{error}",
         "error_search": "错误：{error}",
         "searching": "🔍 正在搜索学术论文...",
 
         # API status messages
         "api_openai": "✅ OpenAI",
         "api_anthropic": "✅ Anthropic",
-        "api_semantic_scholar": "✅ Semantic Scholar",
         "api_semantic_scholar_pro": "✅ Semantic Scholar (Pro)",
         "api_semantic_scholar_free": "✅ Semantic Scholar (Free)",
 
         # Footer
         "footer": "AI 学术论文助手 • 零幻觉保证 • 使用 Streamlit、Semantic Scholar 和 LLMs 构建，用心打造 ❤️",
-
-        # Configuration
-        "config_use_mock_data": "使用模拟数据",
-        "config_use_mock_data_help": "使用模拟数据而不是真实API调用（用于测试）",
 
         # Language selection
         "language": "语言",
@@ -188,34 +157,15 @@ translations = {
         "language_zh": "中文",
 
         # Config management
-        "config_source": "配置源",
-        "config_source_env": ".env 文件",
-        "config_source_json": "JSON 配置",
-        "config_source_default": "默认",
-        "config_manage": "管理配置",
-        "config_create_template": "创建模板",
-        "config_save_current": "保存当前",
         "config_reload": "重新加载",
-        "config_current_source": "当前配置源：{source}",
 
         # Network status
         "network_status": "🌐 网络状态",
-        "network_connected": "✅ 已连接到 Semantic Scholar API",
-        "network_disconnected": "❌ 未连接 - 使用模拟数据",
         "network_check": "检查连接",
         "network_checking": "检查连接状态...",
-        "network_connection_issue": "连接问题: {message}",
-
-        # Mock data warning
-        "mock_data_warning": "⚠️ 使用模拟数据。设置 USE_MOCK_DATA=false 进行真实 API 搜索。",
 
         # Cross-paper analysis
         "cross_paper_analysis_title": "📊 跨论文综合分析",
-        "cross_paper_trends": "研究趋势",
-        "cross_paper_methodology": "方法论对比",
-        "cross_paper_gaps": "研究空白",
-        "cross_paper_future": "未来研究方向",
-        "cross_paper_key_findings": "关键发现",
         "cross_paper_individual_title": "单篇论文分析",
         "paper_analysis_keywords": "关键词",
         "paper_analysis_method": "研究方法",

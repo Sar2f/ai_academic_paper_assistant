@@ -31,9 +31,9 @@ class Paper:
     abstract: Optional[str]
     authors: List[Author]
     year: Optional[int]
-    citation_count: Optional[int]
-    reference_count: Optional[int]
-    url: Optional[str]
+    citation_count: Optional[int] = None
+    reference_count: Optional[int] = None
+    url: Optional[str] = None
     venue: Optional[str] = None
     fields_of_study: List[str] = field(default_factory=list)
     publication_date: Optional[datetime] = None
