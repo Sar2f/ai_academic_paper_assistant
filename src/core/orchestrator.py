@@ -247,39 +247,24 @@ class AcademicPaperOrchestrator:
 
             # Test all APIs through API manager
             api_status = self.api_manager.check_connection()
-            accessible_apis = [name for name, status in api_status.items() if status.get("connected", False)]
+            accessible_apis = [
+                name for name, status in api_status.items()
+                if status.get("connected", False)
+            ]
 
             if accessible_apis:
                 logger.info(f"Accessible APIs: {', '.join(accessible_apis)}")
             else:
                 logger.warning("No APIs are accessible")
 
-            # Test LLM (if API key is available)
+            # Check LLM availability (key existence, no real API call)
             if self.config.openai_api_key or self.config.anthropic_api_key:
-                # Create a simple test
-                test_papers = [
-                    Paper(
-                        paper_id="test",
-                        title="Test Paper",
-                        abstract="This is a test abstract.",
-                        authors=[],
-                        year=2024,
-                        citation_count=0,
-                        reference_count=0,
-                        url=None,
-                    )
-                ]
-
-                test_response = self.llm_processor.generate_answer(
-                    query="What is this paper about?", papers=test_papers
-                )
-
-                if not test_response.error:
-                    logger.info(
-                        "LLM API is accessible (model: %s)", self.config.llm_model
-                    )
+                if self.client:
+                    logger.info("LLM API key configured (model: %s)", self.config.llm_model)
                 else:
-                    logger.warning("LLM API test failed: %s", test_response.error)
+                    logger.warning("LLM API key provided but client init failed")
+            else:
+                logger.warning("No LLM API key — answers will list papers without summary")
 
             return True
 

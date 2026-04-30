@@ -49,7 +49,7 @@ class AppConfig:
         )
 
     def validate(self) -> bool:
-        """Validate configuration."""
+        """Validate configuration. Raises ValueError on invalid settings."""
         errors = []
 
         # Validate LLM model choice
@@ -69,9 +69,7 @@ class AppConfig:
             errors.append("TEMPERATURE 必须在 0 到 1 之间")
 
         if errors:
-            raise ValueError(
-                "配置错误：\n" + "\n".join(f"  - {error}" for error in errors)
-            )
+            raise ValueError("配置错误：\n" + "\n".join(f"  - {error}" for error in errors))
 
         return True
 

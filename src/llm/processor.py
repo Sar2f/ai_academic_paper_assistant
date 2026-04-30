@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import logging
@@ -177,7 +178,6 @@ class LLMProcessor:
                 temperature=0.1,
             )
 
-            import json
             result_text = response.choices[0].message.content.strip()
 
             result_text = re.sub(r'^```json\s*', '', result_text)
@@ -273,7 +273,7 @@ class LLMProcessor:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                max_tokens=2000,
+                max_tokens=self.max_tokens,
                 temperature=0.1,
             )
 
@@ -303,26 +303,29 @@ class LLMProcessor:
             )
 
     def _extract_section(self, text: str, section_name: str) -> str:
-        """Extract a section from the analysis text."""
-        import re
-
-        section_patterns = [
-            rf"{section_name}[:：]?\s*\n(.*?)(?=\n\d+\.|未来研究方向|关键发现|$)",
-            rf"{section_name}[:：]\s*(.*?)(?=\n[A-Z]|未来方向|$)",
+        """Extract a section from the analysis text using robust multi-pattern matching."""
+        patterns = [
+            # Pattern 1: section header followed by content until next numbered section or end
+            rf"###?\s*{section_name}[:：]?\s*\n(.*?)(?=\n###?\s*\d+\.|\n###?\s*未来研究方向|\n###?\s*关键发现|$)",
+            # Pattern 2: numbered header with section name
+            rf"\d+\.\s*{section_name}[:：]?\s*\n(.*?)(?=\n\d+\.|\n未来研究方向|\n关键发现|$)",
+            # Pattern 3: simple colon-separated header
+            rf"{section_name}[:：]\s*\n(.*?)(?=\n[A-Z]|$)",
         ]
 
-        for pattern in section_patterns:
+        for pattern in patterns:
             match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
             if match:
                 section_text = match.group(1).strip()
-                section_text = re.sub(r'\n+', '\n', section_text)
-                return section_text
+                section_text = re.sub(r'\n{3,}', '\n\n', section_text)
+                if section_text:
+                    return section_text
 
-        return text
+        # Fallback: return empty string instead of the entire text
+        return ""
 
     def _extract_key_findings(self, text: str) -> List[str]:
         """Extract key findings as a list."""
-        import re
 
         findings_pattern = r"关键发现[:：]?\s*\n?(.*?)(?=\n未来|$)"
         match = re.search(findings_pattern, text, re.DOTALL | re.IGNORECASE)
