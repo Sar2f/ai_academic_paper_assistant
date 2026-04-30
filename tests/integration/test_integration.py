@@ -207,7 +207,7 @@ class TestPaperProcessing:
         try:
             processor = LLMProcessor(model="gpt-3.5-turbo")
             context = processor._prepare_context(mock_papers)
-            prompt = processor._create_prompt("Test query", context, mock_papers)
+            prompt = processor._create_prompt("Test query", context)
 
             assert "Test query" in prompt
             assert "重要指示" in prompt
@@ -223,6 +223,32 @@ class TestPaperProcessing:
             model="gpt-3.5-turbo", openai_api_key="test-key-from-constructor"
         )
         assert processor.openai_api_key == "test-key-from-constructor"
+
+    def test_processor_without_api_key(self):
+        """Test that LLMProcessor works without API key (returns paper list)."""
+        original_key = os.environ.pop("OPENAI_API_KEY", None)
+        try:
+            processor = LLMProcessor(model="gpt-3.5-turbo", openai_api_key=None)
+            assert processor.client is None
+
+            papers = [
+                Paper(
+                    paper_id="1",
+                    title="Test Paper",
+                    abstract="Abstract",
+                    authors=[Author(name="Test Author")],
+                    year=2024,
+                    citation_count=0,
+                    reference_count=0,
+                    url="https://example.com",
+                ),
+            ]
+            response = processor.generate_answer("test query", papers)
+            assert response.error == "No API key provided"
+            assert "1 篇相关论文" in response.answer
+        finally:
+            if original_key:
+                os.environ["OPENAI_API_KEY"] = original_key
 
     def test_parse_response_citations(self):
         """Test citation parsing from LLM response."""
