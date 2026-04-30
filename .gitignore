@@ -17,7 +17,7 @@ sdist/
 var/
 wheels/
 *.egg-info/
-.installed.cfg
+.installed_cfg
 *.egg
 
 # Virtual Environment
@@ -29,12 +29,12 @@ ENV/
 # IDE
 .vscode/
 .idea/
+.trae/
 *.swp
 *.swo
 
 # OS
 .DS_Store
-.DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
@@ -54,6 +54,9 @@ data/
 # API Keys
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 secrets.txt
 
 # Temporary agent files
@@ -72,18 +75,8 @@ htmlcov/
 .ipynb_checkpoints/
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local

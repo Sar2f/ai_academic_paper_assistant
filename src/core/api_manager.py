@@ -31,6 +31,21 @@ def _normalise_title(title: str) -> str:
     return _WHITESPACE_RE.sub(" ", t).strip()
 
 
+def _deduplicate_papers(papers: List[Paper], limit: int) -> List[Paper]:
+    """Deduplicate papers by normalised title, keeping richer metadata on collision."""
+    seen: Dict[str, Paper] = {}
+    for paper in papers:
+        key = _normalise_title(paper.title)
+        if key not in seen:
+            seen[key] = paper
+        else:
+            existing = seen[key]
+            if (paper.abstract and not existing.abstract) or \
+               (paper.citation_count is not None and existing.citation_count is None):
+                seen[key] = paper
+    return list(seen.values())[:limit]
+
+
 class APIManager:
     """管理所有学术API客户端的统一接口"""
 
@@ -122,21 +137,8 @@ class APIManager:
                 except Exception as e:
                     logger.warning("Error using %s API: %s", name, e)
 
-        # Deduplicate by normalised title (fuzzy match)
-        seen_titles: Dict[str, Paper] = {}
-        for paper in all_papers:
-            norm_key = _normalise_title(paper.title)
-            if norm_key not in seen_titles:
-                seen_titles[norm_key] = paper
-            else:
-                # Keep the paper with richer metadata (abstract, citation_count)
-                existing = seen_titles[norm_key]
-                if (paper.abstract and not existing.abstract) or \
-                   (paper.citation_count is not None and existing.citation_count is None):
-                    seen_titles[norm_key] = paper
-
-        unique_papers = list(seen_titles.values())
-        return unique_papers[:limit]
+        # Deduplicate by normalised title
+        return _deduplicate_papers(all_papers, limit)
 
     def get_api(self, api_name: str) -> Optional[object]:
         """获取指定的API客户端"""

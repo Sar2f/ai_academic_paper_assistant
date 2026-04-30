@@ -11,10 +11,10 @@ from typing import Any, Optional, Tuple
 
 import streamlit as st
 
-from src.core.orchestrator import AcademicPaperOrchestrator
-from src.i18n.translations import Translator
-from src.models.paper import Paper, format_author_names
-from src.utils.config_manager import ConfigManager
+from ..core.orchestrator import AcademicPaperOrchestrator
+from ..i18n.translations import Translator
+from ..models.paper import Paper, format_author_names
+from ..utils.config_manager import ConfigManager
 
 logger = logging.getLogger(__name__)
 
