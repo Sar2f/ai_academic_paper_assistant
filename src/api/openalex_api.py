@@ -59,7 +59,7 @@ class OpenAlexAPI(BaseAPI):
                 f"publication_year:>={min_year}",
                 f"publication_year:<={max_year}",
             ])
-        if min_citation_count:
+        if min_citation_count is not None:
             filters.append(f"cited_by_count:>={min_citation_count}")
         if filters:
             search_params["filter"] = ",".join(filters)

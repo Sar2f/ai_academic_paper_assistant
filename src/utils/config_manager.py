@@ -107,5 +107,3 @@ class ConfigManager:
         except json.JSONDecodeError as e:
             logger.error("Invalid JSON in config file: %s", e)
             return AppConfig()
-
-

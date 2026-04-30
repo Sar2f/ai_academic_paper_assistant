@@ -9,6 +9,11 @@ from ..models.paper import Paper, format_author_names, PaperAnalysis, CrossPaper
 
 logger = logging.getLogger(__name__)
 
+# Shared constants
+_SYSTEM_ROLE = "You are a helpful academic research assistant."
+_MARKDOWN_CODE_RE = re.compile(r'^```(?:json)?\s*|\s*```$', re.MULTILINE)
+_CITATION_RE = re.compile(r"\[(\d+)\]")
+
 
 @dataclass
 class LLMResponse:
@@ -22,6 +27,10 @@ class LLMResponse:
 
 class LLMProcessor:
     """Processes papers using LLMs to generate summaries and answers."""
+
+    # Token limits for specific operations (smaller than the default self.max_tokens)
+    TRANSLATE_MAX_TOKENS = 200
+    ANALYSIS_MAX_TOKENS = 500
 
     def __init__(
         self,
@@ -45,11 +54,7 @@ class LLMProcessor:
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.openai_api_key = openai_api_key
-        if isinstance(api_base_url, str):
-            s = api_base_url.strip()
-            self.api_base_url = s if s else None
-        else:
-            self.api_base_url = None
+        self.api_base_url = (api_base_url.strip() or None) if isinstance(api_base_url, str) else None
 
         # Initialize OpenAI client (optional, can be done later)
         try:
@@ -57,6 +62,35 @@ class LLMProcessor:
         except ValueError:
             # No API key, but still allow initialization for paper search
             self.client = None
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _make_messages(self, user_content: str) -> list:
+        """Build the standard message list used by all LLM calls."""
+        return [
+            {"role": "system", "content": _SYSTEM_ROLE},
+            {"role": "user", "content": user_content},
+        ]
+
+    @staticmethod
+    def _strip_markdown_codeblock(text: str) -> str:
+        """Remove surrounding ```json … ``` fences from LLM output."""
+        return _MARKDOWN_CODE_RE.sub("", text).strip()
+
+    @staticmethod
+    def _extract_citations(text: str, paper_count: int) -> List[int]:
+        """Extract 0-based citation indices from [1], [2]… in *text*.
+
+        Only returns indices that fall within [0, paper_count).
+        """
+        raw = {int(m) for m in _CITATION_RE.findall(text)}
+        return sorted(c - 1 for c in raw if 0 < c <= paper_count)
+
+    # ------------------------------------------------------------------
+    # Client initialization
+    # ------------------------------------------------------------------
 
     def _initialize_client(self):
         """Initialize the OpenAI client."""
@@ -85,7 +119,6 @@ class LLMProcessor:
         Returns:
             LLMResponse with answer and citations
         """
-        # Validate input types
         if not isinstance(query, str):
             return LLMResponse(
                 answer="查询必须是字符串类型。", citations=[], error="Invalid query type"
@@ -101,36 +134,27 @@ class LLMProcessor:
                 answer="未找到相关论文。", citations=[], error="未提供论文"
             )
 
-        # Check if client is initialized
         if not self.client:
-            # No API key, return paper list without LLM answer
-            paper_list = "\n".join([f"[{i+1}] {paper.title} ({paper.year})" for i, paper in enumerate(papers)])
+            paper_list = "\n".join(
+                f"[{i+1}] {paper.title} ({paper.year})" for i, paper in enumerate(papers)
+            )
             return LLMResponse(
                 answer=f"找到 {len(papers)} 篇相关论文，但缺少 LLM API 密钥无法生成总结。\n\n论文列表：\n{paper_list}",
-                citations=[],
-                error="No API key provided"
+                citations=[], error="No API key provided"
             )
 
-        # Prepare context from papers
         context = self._prepare_context(papers)
-
-        # Generate prompt
         prompt = self._create_prompt(query, context)
 
         try:
-            response = self._call_openai(prompt)
-
-            # Parse response to extract citations
-            answer, citations = self._parse_response(response)
-
-            return LLMResponse(answer=answer, citations=citations, reasoning=None)
+            response_text = self._call_openai(prompt)
+            citations = self._extract_citations(response_text, len(papers))
+            return LLMResponse(answer=response_text, citations=citations)
 
         except Exception as e:
             logger.error("Error generating answer: %s", e)
             return LLMResponse(
-                answer="生成答案时遇到错误。",
-                citations=[],
-                error=str(e),
+                answer="生成答案时遇到错误。", citations=[], error=str(e),
             )
 
     def analyze_single_paper(self, paper: Paper) -> PaperAnalysis:
@@ -166,24 +190,16 @@ class LLMProcessor:
                 abstract=paper.abstract[:2000] if paper.abstract else "无摘要"
             )
 
-            messages = [
-                {"role": "system", "content": "You are a helpful academic research assistant."},
-                {"role": "user", "content": prompt},
-            ]
-
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
-                max_tokens=500,
+                messages=self._make_messages(prompt),
+                max_tokens=self.ANALYSIS_MAX_TOKENS,
                 temperature=0.1,
             )
 
-            result_text = response.choices[0].message.content.strip()
-
-            result_text = re.sub(r'^```json\s*', '', result_text)
-            result_text = re.sub(r'^```\s*', '', result_text)
-            result_text = re.sub(r'\s*```$', '', result_text)
-
+            result_text = self._strip_markdown_codeblock(
+                response.choices[0].message.content
+            )
             analysis_data = json.loads(result_text)
 
             return PaperAnalysis(
@@ -265,16 +281,11 @@ class LLMProcessor:
         try:
             prompt = system_prompt.format(context=context, query=query)
 
-            messages = [
-                {"role": "system", "content": "You are a helpful academic research assistant."},
-                {"role": "user", "content": prompt},
-            ]
-
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
+                messages=self._make_messages(prompt),
                 max_tokens=self.max_tokens,
-                temperature=0.1,
+                temperature=self.temperature,
             )
 
             analysis_text = response.choices[0].message.content
@@ -397,30 +408,17 @@ class LLMProcessor:
                 followup_query=followup_query
             )
 
-            messages = [
-                {"role": "system", "content": "You are a helpful academic research assistant."},
-                {"role": "user", "content": prompt},
-            ]
-
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
+                messages=self._make_messages(prompt),
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
             )
 
             answer_text = response.choices[0].message.content
+            citations = self._extract_citations(answer_text, len(papers))
 
-            citations = list(
-                set(int(match) for match in re.findall(r"\[(\d+)\]", answer_text))
-            )
-            citations = [c - 1 for c in citations if 0 < c <= len(papers)]
-
-            return LLMResponse(
-                answer=answer_text,
-                citations=citations,
-                reasoning=None
-            )
+            return LLMResponse(answer=answer_text, citations=citations)
 
         except Exception as e:
             logger.error("Error handling follow-up: %s", e)
@@ -432,28 +430,21 @@ class LLMProcessor:
 
     def _prepare_context(self, papers: List[Paper]) -> str:
         """Prepare context string from papers."""
-        context_parts = []
-
+        parts = []
         for i, paper in enumerate(papers, 1):
-            authors_str = format_author_names(paper.authors, max_shown=3)
-
-            # Create paper entry
-            paper_entry = f"[{i}] {paper.title}\n"
-            paper_entry += f"   Authors: {authors_str}\n"
+            lines = [
+                f"[{i}] {paper.title}",
+                f"   Authors: {format_author_names(paper.authors, max_shown=3)}",
+            ]
             if paper.year:
-                paper_entry += f"   Year: {paper.year}\n"
+                lines.append(f"   Year: {paper.year}")
             if paper.venue:
-                paper_entry += f"   Venue: {paper.venue}\n"
+                lines.append(f"   Venue: {paper.venue}")
             if paper.abstract:
-                # Truncate abstract if too long
-                abstract = paper.abstract
-                if len(abstract) > 500:
-                    abstract = abstract[:497] + "..."
-                paper_entry += f"   Abstract: {abstract}\n"
-
-            context_parts.append(paper_entry)
-
-        return "\n".join(context_parts)
+                abstract = paper.abstract[:497] + "..." if len(paper.abstract) > 500 else paper.abstract
+                lines.append(f"   Abstract: {abstract}")
+            parts.append("\n".join(lines))
+        return "\n".join(parts)
 
     def _create_prompt(self, query: str, context: str) -> str:
         """Create the prompt for the LLM."""
@@ -486,35 +477,13 @@ class LLMProcessor:
 
     def _call_openai(self, prompt: str) -> str:
         """Call OpenAI API."""
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful academic research assistant.",
-            },
-            {"role": "user", "content": prompt},
-        ]
-
         response = self.client.chat.completions.create(
             model=self.model,
-            messages=messages,
+            messages=self._make_messages(prompt),
             max_tokens=self.max_tokens,
             temperature=self.temperature,
         )
-
         return response.choices[0].message.content
-
-    def _parse_response(self, response: str) -> tuple:
-        """Parse LLM response to extract answer and citations."""
-        # Extract citations (numbers in brackets)
-        citation_pattern = r"\[(\d+)\]"
-        citations = list(
-            set(int(match) for match in re.findall(citation_pattern, response))
-        )
-
-        # Convert to 0-based indices for internal use
-        citations = [c - 1 for c in citations if 0 < c <= 100]  # Reasonable upper bound
-
-        return response, citations
 
     def translate_query(self, query: str, target_language: str = "English") -> str:
         """
@@ -528,7 +497,6 @@ class LLMProcessor:
             Translated query suitable for academic paper search
         """
         if not self.client:
-            # No API key, return original query
             return query
 
         system_prompt = """
@@ -550,20 +518,15 @@ class LLMProcessor:
         prompt = system_prompt.format(query=query, target_language=target_language)
 
         try:
-            messages = [
-                {"role": "system", "content": "You are a helpful academic research assistant."},
-                {"role": "user", "content": prompt},
-            ]
-
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
-                max_tokens=200,
-                temperature=0.1,
+                messages=self._make_messages(prompt),
+                max_tokens=self.TRANSLATE_MAX_TOKENS,
+                temperature=self.temperature,
             )
 
             translated_query = response.choices[0].message.content.strip()
-            logger.info(f"Translated query from '{query}' to '{translated_query}'")
+            logger.info("Translated query from '%s' to '%s'", query, translated_query)
             return translated_query
 
         except Exception as e:

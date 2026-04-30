@@ -252,23 +252,12 @@ class TestPaperProcessing:
 
     def test_parse_response_citations(self):
         """Test citation parsing from LLM response."""
-        original_openai_key = os.environ.get("OPENAI_API_KEY")
-        os.environ["OPENAI_API_KEY"] = "test-key"
+        response_text = "According to [1], neural networks are powerful. This is supported by [2] and [3]."
+        citations = LLMProcessor._extract_citations(response_text, 5)
 
-        try:
-            processor = LLMProcessor(model="gpt-3.5-turbo")
-            response_text = "According to [1], neural networks are powerful. This is supported by [2] and [3]."
-            answer, citations = processor._parse_response(response_text)
-
-            assert answer == response_text
-            assert 0 in citations  # [1] -> index 0
-            assert 1 in citations  # [2] -> index 1
-            assert 2 in citations  # [3] -> index 2
-        finally:
-            if original_openai_key:
-                os.environ["OPENAI_API_KEY"] = original_openai_key
-            else:
-                del os.environ["OPENAI_API_KEY"]
+        assert 0 in citations  # [1] -> index 0
+        assert 1 in citations  # [2] -> index 1
+        assert 2 in citations  # [3] -> index 2
 
 
 

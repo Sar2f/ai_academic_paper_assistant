@@ -58,18 +58,12 @@ class QueryProcessor:
             # No LLM available — return original for both
             return {"original": query, "english": query, "chinese": query}
 
-        # Single LLM call for both translations
         if is_chinese:
+            # Chinese → translate to English; Chinese version is the original
             english_query = self.llm_processor.translate_query(query, target_language="English")
-            # For Chinese queries, the "Chinese" version is the original (already Chinese)
-            chinese_query = query
+            return {"original": query, "english": english_query, "chinese": query}
         else:
-            # For English queries, translate to academic English and also get Chinese
+            # English → also translate to Chinese for potential Chinese API use
             english_query = self.llm_processor.translate_query(query, target_language="English")
-            chinese_query = english_query  # Same query works for both
-
-        return {
-            "original": query,
-            "english": english_query,
-            "chinese": chinese_query,
-        }
+            chinese_query = self.llm_processor.translate_query(query, target_language="Chinese")
+            return {"original": query, "english": english_query, "chinese": chinese_query}

@@ -177,8 +177,6 @@ def display_sidebar() -> None:
             st.info(f"**{t.t('sidebar_max_papers')}:** {config.max_papers_to_retrieve}")
             st.info(f"**{t.t('sidebar_temperature')}:** {config.temperature}")
 
-
-
             api_status = []
             if config.openai_api_key:
                 api_status.append(t.t("api_openai"))
@@ -210,30 +208,13 @@ def display_sidebar() -> None:
 
             if "last_connection_status" in st.session_state:
                 connection_status = st.session_state.last_connection_status
-
-                ss_status = connection_status.get("semantic_scholar", {})
-                if ss_status.get("connected"):
-                    st.success(f"✅ Semantic Scholar ({ss_status.get('response_time', 0):.2f}s)")
-                elif ss_status.get("status"):
-                    st.error(f"❌ Semantic Scholar")
-
-                arxiv_status = connection_status.get("arxiv", {})
-                if arxiv_status.get("connected"):
-                    st.success(f"✅ arXiv ({arxiv_status.get('response_time', 0):.2f}s)")
-                elif arxiv_status.get("status"):
-                    st.error(f"❌ arXiv")
-
-                pubmed_status = connection_status.get("pubmed", {})
-                if pubmed_status.get("connected"):
-                    st.success(f"✅ PubMed ({pubmed_status.get('response_time', 0):.2f}s)")
-                elif pubmed_status.get("status"):
-                    st.error(f"❌ PubMed")
-
-                openalex_status = connection_status.get("openalex", {})
-                if openalex_status.get("connected"):
-                    st.success(f"✅ OpenAlex ({openalex_status.get('response_time', 0):.2f}s)")
-                elif openalex_status.get("status"):
-                    st.error(f"❌ OpenAlex")
+                for api_key in ["semantic_scholar", "arxiv", "pubmed", "openalex"]:
+                    status = connection_status.get(api_key, {})
+                    display_name = api_key.replace("_", " ").title()
+                    if status.get("connected"):
+                        st.success(f"✅ {display_name} ({status.get('response_time', 0):.2f}s)")
+                    elif status.get("status"):
+                        st.error(f"❌ {display_name}")
 
         st.markdown("---")
         st.markdown(f"### {t.t('sidebar_how_it_works')}")
@@ -347,6 +328,7 @@ def display_cross_paper_analysis(result: Any) -> None:
         )):
             with st.expander(f"📄 [{i+1}] {paper.title[:60]}..."):
                 col1, col2 = st.columns(2)
+                _truncate = lambda s, n=150: s[:n] + "..." if len(s) > n else s
                 with col1:
                     if paper_analysis.keywords:
                         st.markdown(f"**🔑 {t.t('paper_analysis_keywords')}:**")
@@ -356,10 +338,10 @@ def display_cross_paper_analysis(result: Any) -> None:
                 with col2:
                     if paper_analysis.contributions:
                         st.markdown(f"**✨ {t.t('paper_analysis_contributions')}:**")
-                        st.markdown(paper_analysis.contributions[:150] + "..." if len(paper_analysis.contributions) > 150 else paper_analysis.contributions)
+                        st.markdown(_truncate(paper_analysis.contributions))
                     if paper_analysis.limitations:
                         st.markdown(f"\n**⚠️ {t.t('paper_analysis_limitations')}:**")
-                        st.markdown(paper_analysis.limitations[:150] + "..." if len(paper_analysis.limitations) > 150 else paper_analysis.limitations)
+                        st.markdown(_truncate(paper_analysis.limitations))
 
 
 def display_followup_section(result: Any) -> None:

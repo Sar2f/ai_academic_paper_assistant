@@ -72,11 +72,11 @@ class APIManager:
             try:
                 result[name] = api.check_connection()
             except Exception as e:
-                logger.warning(f"Error checking {name} API connection: {e}")
+                logger.warning("Error checking %s API connection: %s", name, e)
                 result[name] = {
                     "connected": False,
                     "status": "error",
-                    "message": f"Error checking connection: {str(e)}",
+                    "message": f"Error checking connection: {e}",
                 }
         return result
 
@@ -116,11 +116,11 @@ class APIManager:
                     result = future.result()
                     if result.papers:
                         all_papers.extend(result.papers)
-                        logger.info(f"Found {len(result.papers)} papers using {name} API")
+                        logger.info("Found %d papers using %s API", len(result.papers), name)
                     else:
-                        logger.info(f"{name} API returned no results")
+                        logger.info("%s API returned no results", name)
                 except Exception as e:
-                    logger.warning(f"Error using {name} API: {e}")
+                    logger.warning("Error using %s API: %s", name, e)
 
         # Deduplicate by normalised title (fuzzy match)
         seen_titles: Dict[str, Paper] = {}

@@ -90,5 +90,3 @@ class SemanticScholarAPI(BaseAPI):
             total_results=data.get("total", 0),
             search_time=0,  # set by BaseAPI.search_papers
         )
-
-
