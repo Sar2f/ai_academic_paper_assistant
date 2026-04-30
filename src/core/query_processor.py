@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional
 
 from ..llm.processor import LLMProcessor
 from ..utils.validation import normalize_search_query
@@ -8,20 +8,11 @@ class QueryProcessor:
     """处理查询预处理和翻译"""
 
     def __init__(self, llm_processor: LLMProcessor):
-        """
-        初始化查询处理器
-
-        Args:
-            llm_processor: LLM处理器实例
-        """
         self.llm_processor = llm_processor
 
     def validate_and_normalize(self, query: str) -> Tuple[bool, str, Optional[str]]:
         """
         验证并规范化查询
-
-        Args:
-            query: 用户查询
 
         Returns:
             (is_valid, normalized_query, error_message)
@@ -35,35 +26,18 @@ class QueryProcessor:
 
         return True, normalized, None
 
-    def translate_query(self, query: str) -> Dict[str, str]:
+    def translate_query(self, query: str) -> str:
         """
-        翻译查询为适合不同API的格式
+        将查询翻译为英文学术搜索用语。
 
-        Uses a single LLM call to produce both English and Chinese
-        translations simultaneously, avoiding double API calls.
-
-        Args:
-            query: 已规范化的查询
+        Chinese queries get a single LLM call to translate to English.
+        English queries get an LLM call to formalise into academic English.
+        No LLM available returns the original query.
 
         Returns:
-            {
-                "original": str,  # 原始查询
-                "english": str,   # 英文查询（用于大多数API）
-                "chinese": str    # 中文查询（用于中文API）
-            }
+            English academic search query string
         """
-        is_chinese = any('\u4e00' <= char <= '\u9fff' for char in query)
-
         if not self.llm_processor.client:
-            # No LLM available — return original for both
-            return {"original": query, "english": query, "chinese": query}
+            return query
 
-        if is_chinese:
-            # Chinese → translate to English; Chinese version is the original
-            english_query = self.llm_processor.translate_query(query, target_language="English")
-            return {"original": query, "english": english_query, "chinese": query}
-        else:
-            # English → also translate to Chinese for potential Chinese API use
-            english_query = self.llm_processor.translate_query(query, target_language="English")
-            chinese_query = self.llm_processor.translate_query(query, target_language="Chinese")
-            return {"original": query, "english": english_query, "chinese": chinese_query}
+        return self.llm_processor.translate_query(query, target_language="English")

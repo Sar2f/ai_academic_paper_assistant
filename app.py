@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-AI Academic Paper Assistant — Streamlit entrypoint.
-界面与编排见 src/ui；业务编排见 src/core/orchestrator。
-"""
+"""AI Academic Paper Assistant — Streamlit entrypoint."""
 
 import logging
 
@@ -18,6 +15,7 @@ from src.interface.streamlit_components import (
     get_translator,
     initialize_app,
 )
+from src.i18n.translations import Translator
 from src.utils.config_manager import ConfigManager
 
 logging.basicConfig(level=logging.INFO)
@@ -46,8 +44,6 @@ if "config_manager" not in st.session_state:
 if "current_language" not in st.session_state:
     st.session_state.current_language = "zh"
 if "translator" not in st.session_state:
-    from src.i18n.translations import Translator
-
     st.session_state.translator = Translator("zh")
 
 

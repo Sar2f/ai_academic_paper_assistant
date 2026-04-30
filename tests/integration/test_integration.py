@@ -1,27 +1,16 @@
-#!/usr/bin/env python3
-"""
-Integration test for the AI Academic Paper Assistant.
-Tests the basic functionality without requiring API keys.
-"""
+"""Integration test for the AI Academic Paper Assistant."""
 
 import os
-import sys
 import logging
 
 import pytest
 
-# Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+from src.models.paper import Paper, Author, SearchResult, format_author_names
+from src.llm.processor import LLMProcessor
+from src.utils.config import AppConfig
+from src.utils.validation import clamp_paper_limit, normalize_search_query
 
-from src.models.paper import Paper, Author, SearchResult, format_author_names  # noqa: E402
-from src.llm.processor import LLMProcessor  # noqa: E402
-from src.api.semantic_scholar import SemanticScholarAPI  # noqa: E402
-from src.utils.config import AppConfig  # noqa: E402
-from src.utils.validation import clamp_paper_limit, normalize_search_query  # noqa: E402
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 class TestDataModels:
@@ -141,13 +130,6 @@ class TestConfiguration:
         with pytest.raises(ValueError):
             config.validate()
 
-    def test_available_models(self):
-        config = AppConfig(openai_api_key="test")
-        models = config.get_available_models()
-        assert "gpt-4o-mini" in models
-        assert "gpt-4o" in models
-        assert "gpt-4-turbo" in models
-
 
 class TestPaperProcessing:
     """Test paper processing with mock data."""
@@ -258,15 +240,3 @@ class TestPaperProcessing:
         assert 0 in citations  # [1] -> index 0
         assert 1 in citations  # [2] -> index 1
         assert 2 in citations  # [3] -> index 2
-
-
-
-
-
-def main():
-    """Run all integration tests using pytest."""
-    sys.exit(pytest.main([__file__, "-v"]))
-
-
-if __name__ == "__main__":
-    main()

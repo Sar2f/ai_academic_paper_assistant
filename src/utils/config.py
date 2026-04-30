@@ -72,15 +72,3 @@ class AppConfig:
             raise ValueError("配置错误：\n" + "\n".join(f"  - {error}" for error in errors))
 
         return True
-
-    def get_available_models(self) -> list:
-        """Get list of available LLM models based on API keys."""
-        models = []
-
-        if self.openai_api_key:
-            models.extend(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"])
-
-        if self.anthropic_api_key:
-            models.extend(["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"])
-
-        return models

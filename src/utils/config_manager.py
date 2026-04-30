@@ -1,8 +1,7 @@
 import os
 import json
 import logging
-from typing import Optional, Dict, Any
-from dataclasses import asdict
+from typing import Optional
 from .config import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -58,7 +57,7 @@ class ConfigManager:
         self.current_source = source
 
         if source == "env":
-            config = self._load_from_env()
+            config = AppConfig.from_env()
         elif source == "json":
             config = self._load_from_json()
         else:  # default
@@ -74,10 +73,6 @@ class ConfigManager:
 
         self.current_config = config
         return config
-
-    def _load_from_env(self) -> AppConfig:
-        """Load configuration from environment variables."""
-        return AppConfig.from_env()
 
     def _load_from_json(self) -> AppConfig:
         """Load configuration from JSON file."""

@@ -119,11 +119,9 @@ class AcademicPaperOrchestrator:
             )
 
         try:
-            # Translate query
-            translated_queries = self.query_processor.translate_query(normalized_query)
-            logger.info(f"Original query: {normalized_query}")
-            logger.info(f"Translated query: {translated_queries['english']}")
-            logger.info(f"Chinese translated query: {translated_queries['chinese']}")
+            # Translate query to English academic search terms
+            english_query = self.query_processor.translate_query(normalized_query)
+            logger.info("Original query: %s → English: %s", normalized_query, english_query)
 
             # Search for papers
             total_limit = clamp_paper_limit(
@@ -132,7 +130,7 @@ class AcademicPaperOrchestrator:
 
             # Use API manager to search all APIs
             final_papers = self.api_manager.search_all_apis(
-                query=translated_queries["english"],
+                query=english_query,
                 limit=total_limit,
                 sort_by="relevance"
             )
@@ -179,9 +177,9 @@ class AcademicPaperOrchestrator:
             logger.error("Error processing query '%s': %s", normalized_query, e)
             processing_time = time.time() - start_time
 
-            # Use fallback handler
+            # Use fallback handler with original normalized query
             search_result = self.fallback_handler.try_fallback_apis(
-                query=translated_queries["english"],
+                query=normalized_query,
                 limit=clamp_paper_limit(limit, self.config.max_papers_to_retrieve)
             )
 

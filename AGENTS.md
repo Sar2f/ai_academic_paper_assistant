@@ -13,9 +13,10 @@
   Helper methods: `_make_messages()`, `_extract_citations()`, `_strip_markdown_codeblock()`.
   Class-level token constants: `TRANSLATE_MAX_TOKENS=200`, `ANALYSIS_MAX_TOKENS=500`.
   `_extract_section()` returns empty string on failure (not the whole text).
-- **QueryProcessor**: Chinese queries get English translation only; English queries
-  get both English (academic) and Chinese translations.
-- **FallbackHandler**: Applies same title-based dedup as APIManager (`_normalise_title()`).
+- **QueryProcessor**: `translate_query()` returns a single English academic search string
+  (not a dict). Chinese queries get English translation; English queries get formalised
+  academic English. No Chinese translation is generated (unused by pipeline).
+- **FallbackHandler**: Uses shared `_deduplicate_papers()` from `api_manager` module.
 
 ## Key Commands
 
@@ -27,8 +28,9 @@
 
 - BaseAPI subclass: implement `_build_connection_test()` → returns `(url, params, timeout)`
   and `_fetch_raw()` → returns `SearchResult` (must raise HTTPError on failure for retry).
-- Title dedup: `_normalise_title()` strips punctuation, lowercases, collapses whitespace.
-  Used in both `APIManager.search_all_apis()` and `FallbackHandler.try_fallback_apis()`.
+- Title dedup: `_deduplicate_papers(papers, limit)` — shared function in `api_manager`
+  module, used by both `APIManager.search_all_apis()` and `FallbackHandler.try_fallback_apis()`.
+  Internally uses `_normalise_title()` which strips punctuation, lowercases, collapses whitespace.
 - Config validation: `AppConfig.validate()` raises `ValueError` on invalid settings.
 - Orchestrator `validate_configuration()`: checks `self.llm_processor.client` (not `self.client`).
 - LLM calls all use `self._make_messages(prompt)` for consistent system role.
@@ -101,3 +103,37 @@
 2. **LLMProcessor._prepare_context**: Simplified string building with list-of-lines pattern.
 3. **display_cross_paper_analysis**: Simplified truncation pattern with `_truncate` lambda.
 4. **Cleaned trailing/extra blank lines** across multiple files.
+
+## Audit & Cleanup (2026-04-30, Round 2)
+
+### Bug Fixes
+
+1. **orchestrator.process_query()**: Fixed `translated_queries` NameError in except block —
+   if exception occurred before `translate_query()` was called, the variable was undefined.
+   Now uses `normalized_query` directly in the fallback path.
+2. **orchestrator.py logger f-strings**: Fixed 3 remaining logger f-strings → `%s` lazy formatting.
+
+### Dead Code Removal
+
+1. **Removed unused imports**: `asdict` from `config_manager.py`, `Dict`/`Any` from `config_manager.py`.
+2. **Removed `get_available_models()`**: Never called anywhere in the codebase.
+3. **Removed `_load_from_env()` wrapper**: One-line `AppConfig.from_env()` call in `ConfigManager`.
+4. **Removed `project_memory.json`**: Empty file, never used.
+5. **Removed 13 script-style test files**: They were manual run scripts with `if __name__`,
+   not proper pytest tests. Kept only `test_base_api.py` and `test_integration.py`.
+
+### Redundancy Elimination
+
+1. **Extracted `_deduplicate_papers()`**: Shared dedup logic used by both `APIManager` and
+   `FallbackHandler`, replacing 12 lines of duplicated code in each.
+2. **Simplified `QueryProcessor.translate_query()`**: Returns `str` instead of `Dict[str, str]`.
+   Removed unused Chinese translation for English queries (was never consumed by pipeline,
+   wasted one LLM API call per English query).
+
+### Cleanup
+
+1. **Fixed `.gitignore`**: Removed duplicate entries (`.DS_Store`, `.env.local`), added `.trae/`.
+2. **Unified import style**: `streamlit_components.py` changed from absolute to relative imports.
+3. **Removed redundant lazy import**: `app.py` no longer inline-imports `Translator` in
+   session_state init block (it's already imported at top level).
+4. **Fixed `app.py` docstring**: Removed reference to non-existent `src/ui` directory.
