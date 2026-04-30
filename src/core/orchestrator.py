@@ -237,35 +237,3 @@ class AcademicPaperOrchestrator:
             papers=papers,
             previous_answer=previous_answer
         )
-
-    def validate_configuration(self) -> bool:
-        """Validate that all required components are properly configured."""
-        try:
-            self.config.validate()
-
-            # Test all APIs through API manager
-            api_status = self.api_manager.check_connection()
-            accessible_apis = [
-                name for name, status in api_status.items()
-                if status.get("connected", False)
-            ]
-
-            if accessible_apis:
-                logger.info("Accessible APIs: %s", ", ".join(accessible_apis))
-            else:
-                logger.warning("No APIs are accessible")
-
-            # Check LLM availability (key existence, no real API call)
-            if self.config.openai_api_key or self.config.anthropic_api_key:
-                if self.llm_processor.client:
-                    logger.info("LLM API key configured (model: %s)", self.config.llm_model)
-                else:
-                    logger.warning("LLM API key provided but client init failed")
-            else:
-                logger.warning("No LLM API key — answers will list papers without summary")
-
-            return True
-
-        except Exception as e:
-            logger.error("Configuration validation failed: %s", e)
-            return False

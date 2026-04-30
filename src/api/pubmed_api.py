@@ -9,8 +9,6 @@ import logging
 import xml.etree.ElementTree as ET
 from typing import List, Optional
 
-import requests
-
 from .base_api import BaseAPI
 from ..models.paper import Paper, SearchResult, Author
 
@@ -125,12 +123,8 @@ class PubMedAPI(BaseAPI):
                     abstract=abstract,
                     authors=authors,
                     year=year,
-                    citation_count=None,
-                    reference_count=None,
                     url=url,
                     venue=venue,
-                    fields_of_study=[],
-                    publication_date=None,
                 ))
             except Exception as e:
                 logger.warning("Failed to parse paper data: %s", e)

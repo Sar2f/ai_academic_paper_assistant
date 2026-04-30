@@ -13,10 +13,15 @@ import streamlit as st
 
 from ..core.orchestrator import AcademicPaperOrchestrator
 from ..i18n.translations import Translator
+from ..llm.processor import _CROSS_PAPER_MAX_PAPERS
 from ..models.paper import Paper, format_author_names
 from ..utils.config_manager import ConfigManager
 
 logger = logging.getLogger(__name__)
+
+# Pre-compiled pattern for citation highlighting in HTML
+_CITATION_HTML_RE = re.compile(r"\[(\d+)\]")
+_CITATION_HTML_REPL = r'<span class="citation">[\1]</span>'
 
 APP_CSS = """
 <style>
@@ -323,8 +328,8 @@ def display_cross_paper_analysis(result: Any) -> None:
         st.caption(t.t("cross_paper_individual_hint"))
 
         for i, (paper_analysis, paper) in enumerate(zip(
-            analysis.paper_analyses[:5],
-            result.search_result.papers[:5]
+            analysis.paper_analyses[:_CROSS_PAPER_MAX_PAPERS],
+            result.search_result.papers[:_CROSS_PAPER_MAX_PAPERS]
         )):
             with st.expander(f"📄 [{i+1}] {paper.title[:60]}..."):
                 col1, col2 = st.columns(2)
@@ -381,7 +386,7 @@ def display_followup_section(result: Any) -> None:
                 if followup.get("error"):
                     st.error(followup["answer"])
                 else:
-                    answer_text = re.sub(r"\[(\d+)\]", r'<span class="citation">[\1]</span>', followup["answer"])
+                    answer_text = _CITATION_HTML_RE.sub(_CITATION_HTML_REPL, followup["answer"])
                     st.markdown(answer_text, unsafe_allow_html=True)
 
 
@@ -408,7 +413,7 @@ def display_results(result: Any) -> None:
     st.markdown('<div class="answer-container">', unsafe_allow_html=True)
 
     answer_text = result.llm_response.answer
-    answer_text = re.sub(r"\[(\d+)\]", r'<span class="citation">[\1]</span>', answer_text)
+    answer_text = _CITATION_HTML_RE.sub(_CITATION_HTML_REPL, answer_text)
     st.markdown(answer_text, unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -416,8 +421,6 @@ def display_results(result: Any) -> None:
     display_followup_section(result)
 
     st.markdown(f"### {t.t('results_references')} ({len(result.search_result.papers)} papers)")
-
-    cited_indices = set(result.llm_response.citations)
 
     for idx, paper in enumerate(result.search_result.papers, 1):
         display_paper_card(paper, idx)

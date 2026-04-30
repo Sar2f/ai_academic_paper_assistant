@@ -9,8 +9,6 @@ import logging
 import xml.etree.ElementTree as ET
 from typing import List, Optional
 
-import requests
-
 from .base_api import BaseAPI
 from ..models.paper import Paper, SearchResult, Author
 
@@ -87,12 +85,8 @@ class ArxivAPI(BaseAPI):
                     abstract=abstract,
                     authors=[Author(name=name) for name in authors],
                     year=year,
-                    citation_count=None,
-                    reference_count=None,
                     url=paper_id,
                     venue="arXiv",
-                    fields_of_study=[],
-                    publication_date=None,
                 ))
             except Exception as e:
                 logger.warning("Failed to parse paper data: %s", e)
