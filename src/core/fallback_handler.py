@@ -1,8 +1,8 @@
 import logging
 from typing import Optional, List
 
-from .api_manager import APIManager
-from ..models.paper import SearchResult
+from .api_manager import APIManager, _normalise_title
+from ..models.paper import Paper, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class FallbackHandler:
         
         for strategy in fallback_strategies:
             try:
-                papers = []
+                papers: List[Paper] = []
                 for api_name in strategy:
                     api = self.api_manager.get_api(api_name)
                     if api:
@@ -51,15 +51,28 @@ class FallbackHandler:
                         papers.extend(result.papers)
                 
                 if papers:
-                    logger.info(f"Fallback strategy {strategy} successful, found {len(papers)} papers")
+                    # Deduplicate by normalised title (same logic as APIManager)
+                    seen: dict = {}
+                    for paper in papers:
+                        key = _normalise_title(paper.title)
+                        if key not in seen:
+                            seen[key] = paper
+                        else:
+                            existing = seen[key]
+                            if (paper.abstract and not existing.abstract) or \
+                               (paper.citation_count is not None and existing.citation_count is None):
+                                seen[key] = paper
+                    unique = list(seen.values())[:limit]
+
+                    logger.info("Fallback strategy %s successful, found %d papers", strategy, len(unique))
                     return SearchResult(
                         query=query,
-                        papers=papers[:limit],
-                        total_results=len(papers),
+                        papers=unique,
+                        total_results=len(unique),
                         search_time=0
                     )
             except Exception as e:
-                logger.warning(f"Fallback strategy {strategy} failed: {e}")
+                logger.warning("Fallback strategy %s failed: %s", strategy, e)
                 continue
         
         logger.warning("All fallback strategies failed")

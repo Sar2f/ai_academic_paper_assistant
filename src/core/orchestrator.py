@@ -253,13 +253,13 @@ class AcademicPaperOrchestrator:
             ]
 
             if accessible_apis:
-                logger.info(f"Accessible APIs: {', '.join(accessible_apis)}")
+                logger.info("Accessible APIs: %s", ", ".join(accessible_apis))
             else:
                 logger.warning("No APIs are accessible")
 
             # Check LLM availability (key existence, no real API call)
             if self.config.openai_api_key or self.config.anthropic_api_key:
-                if self.client:
+                if self.llm_processor.client:
                     logger.info("LLM API key configured (model: %s)", self.config.llm_model)
                 else:
                     logger.warning("LLM API key provided but client init failed")
