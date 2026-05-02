@@ -45,8 +45,12 @@ translations = {
         # Paper card
         "paper_year": "Year",
         "paper_citations": "Citations",
+        "paper_reference_count": "Refs",
         "paper_abstract": "Abstract",
         "paper_read_more": "Read Paper",
+        "paper_venue": "Venue",
+        "paper_fields_of_study": "Fields",
+        "paper_cited_in_answer": "Cited in answer",
 
         # Warnings and errors
         "warning_no_llm_keys": "⚠️ No LLM API keys detected. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env file to enable AI-powered answers. Semantic Scholar search will still work.",
@@ -83,6 +87,19 @@ translations = {
         "paper_analysis_contributions": "Main Contributions",
         "paper_analysis_limitations": "Limitations",
         "cross_paper_individual_hint": "Click to view detailed analysis of individual papers",
+
+        # Stats bar
+        "stats_total_papers": "Papers Found",
+        "stats_total_citations": "Total Citations",
+        "stats_avg_citations": "Avg Citations",
+        "stats_date_range": "Date Range",
+
+        # Sidebar sections
+        "sidebar_config_info": "Configuration",
+        "sidebar_api_section": "API Status",
+
+        # Cross-paper analysis
+        "cross_paper_key_findings_list": "Key Findings",
 
         # Follow-up questions
         "followup_title": "Ask Follow-up Questions",
@@ -134,8 +151,12 @@ translations = {
         # Paper card
         "paper_year": "年份",
         "paper_citations": "引用",
+        "paper_reference_count": "参考文献",
         "paper_abstract": "摘要",
         "paper_read_more": "阅读论文",
+        "paper_venue": "发表刊物",
+        "paper_fields_of_study": "研究领域",
+        "paper_cited_in_answer": "答案引用",
 
         # Warnings and errors
         "warning_no_llm_keys": "⚠️ 未检测到 LLM API 密钥。请在 .env 文件中设置 OPENAI_API_KEY 或 ANTHROPIC_API_KEY 以启用 AI 驱动的答案。Semantic Scholar 搜索仍可工作。",
@@ -172,6 +193,19 @@ translations = {
         "paper_analysis_contributions": "主要贡献",
         "paper_analysis_limitations": "局限性",
         "cross_paper_individual_hint": "点击查看单篇论文的详细分析",
+
+        # Stats bar
+        "stats_total_papers": "检索论文",
+        "stats_total_citations": "总引用数",
+        "stats_avg_citations": "平均引用",
+        "stats_date_range": "时间跨度",
+
+        # Sidebar sections
+        "sidebar_config_info": "配置信息",
+        "sidebar_api_section": "API接口状态",
+
+        # Cross-paper analysis
+        "cross_paper_key_findings_list": "关键发现",
 
         # Follow-up questions
         "followup_title": "追问研究助手",

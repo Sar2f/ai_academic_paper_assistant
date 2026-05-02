@@ -119,9 +119,11 @@ class AcademicPaperOrchestrator:
             )
 
         try:
-            # Translate query to English academic search terms
-            english_query = self.query_processor.translate_query(normalized_query)
-            logger.info("Original query: %s → English: %s", normalized_query, english_query)
+            # Translate query
+            translated_queries = self.query_processor.translate_query(normalized_query)
+            logger.info(f"Original query: {normalized_query}")
+            logger.info(f"Translated query: {translated_queries['english']}")
+            logger.info(f"Chinese translated query: {translated_queries['chinese']}")
 
             # Search for papers
             total_limit = clamp_paper_limit(
@@ -130,7 +132,7 @@ class AcademicPaperOrchestrator:
 
             # Use API manager to search all APIs
             final_papers = self.api_manager.search_all_apis(
-                query=english_query,
+                query=translated_queries["english"],
                 limit=total_limit,
                 sort_by="relevance"
             )
@@ -174,12 +176,13 @@ class AcademicPaperOrchestrator:
             )
 
         except Exception as e:
-            logger.error("Error processing query '%s': %s", normalized_query, e)
+            logger.error("Error processing query '%s': %s", query, e)
             processing_time = time.time() - start_time
 
-            # Use fallback handler with original normalized query
+            # Use fallback handler (translated_queries may not be set if translate_query failed)
+            fallback_query = translated_queries.get("english", normalized_query) if 'translated_queries' in locals() else query
             search_result = self.fallback_handler.try_fallback_apis(
-                query=normalized_query,
+                query=fallback_query,
                 limit=clamp_paper_limit(limit, self.config.max_papers_to_retrieve)
             )
 
@@ -237,3 +240,50 @@ class AcademicPaperOrchestrator:
             papers=papers,
             previous_answer=previous_answer
         )
+
+    def validate_configuration(self) -> bool:
+        """Validate that all required components are properly configured."""
+        try:
+            self.config.validate()
+
+            # Test all APIs through API manager
+            api_status = self.api_manager.check_connection()
+            accessible_apis = [name for name, status in api_status.items() if status.get("connected", False)]
+
+            if accessible_apis:
+                logger.info(f"Accessible APIs: {', '.join(accessible_apis)}")
+            else:
+                logger.warning("No APIs are accessible")
+
+            # Test LLM (if API key is available)
+            if self.config.openai_api_key or self.config.anthropic_api_key:
+                # Create a simple test
+                test_papers = [
+                    Paper(
+                        paper_id="test",
+                        title="Test Paper",
+                        abstract="This is a test abstract.",
+                        authors=[],
+                        year=2024,
+                        citation_count=0,
+                        reference_count=0,
+                        url=None,
+                    )
+                ]
+
+                test_response = self.llm_processor.generate_answer(
+                    query="What is this paper about?", papers=test_papers
+                )
+
+                if not test_response.error:
+                    logger.info(
+                        "LLM API is accessible (model: %s)", self.config.llm_model
+                    )
+                else:
+                    logger.warning("LLM API test failed: %s", test_response.error)
+
+            return True
+
+        except Exception as e:
+            logger.error("Configuration validation failed: %s", e)
+            return False

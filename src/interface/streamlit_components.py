@@ -11,60 +11,156 @@ from typing import Any, Optional, Tuple
 
 import streamlit as st
 
-from ..core.orchestrator import AcademicPaperOrchestrator
-from ..i18n.translations import Translator
-from ..llm.processor import _CROSS_PAPER_MAX_PAPERS
-from ..models.paper import Paper, format_author_names
-from ..utils.config_manager import ConfigManager
+from src.core.orchestrator import AcademicPaperOrchestrator
+from src.i18n.translations import Translator
+from src.models.paper import Paper, format_author_names
+from src.utils.config_manager import ConfigManager
 
 logger = logging.getLogger(__name__)
 
-# Pre-compiled pattern for citation highlighting in HTML
-_CITATION_HTML_RE = re.compile(r"\[(\d+)\]")
-_CITATION_HTML_REPL = r'<span class="citation">[\1]</span>'
-
 APP_CSS = """
 <style>
+    /* ── Header ── */
     .main-header {
         font-size: 2.5rem;
         color: #1E3A8A;
         text-align: center;
         margin-bottom: 0.5rem;
         font-weight: 700;
+        letter-spacing: -0.5px;
+        line-height: 1.2;
         background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
     .sub-header {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
         color: #6B7280;
         text-align: center;
         margin-bottom: 2rem;
         font-weight: 400;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
     }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        flex: 1;
+        min-width: 120px;
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        text-align: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+    }
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1E3A8A;
+        line-height: 1.2;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6B7280;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.25rem;
+    }
+
+    /* ── Paper cards ── */
     .paper-card {
         padding: 1.25rem;
         border-radius: 0.75rem;
         border-left: 4px solid #3B82F6;
+        border-top: 1px solid #E5E7EB;
+        border-right: 1px solid #E5E7EB;
+        border-bottom: 1px solid #E5E7EB;
         background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
         margin-bottom: 1rem;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        border-top: 1px solid #E5E7EB;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-left-color 0.2s ease;
+        position: relative;
     }
     .paper-card:hover {
         transform: translateX(4px);
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        border-left-color: #2563EB;
     }
+    .paper-card-cited {
+        border-left: 4px solid #10B981 !important;
+        background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%) !important;
+    }
+    .paper-card-cited:hover {
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
+    }
+    .cited-badge {
+        display: inline-block;
+        background: #D1FAE5;
+        color: #065F46;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.15rem 0.5rem;
+        border-radius: 9999px;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .venue-badge {
+        display: inline-block;
+        background: #F1F5F9;
+        color: #475569;
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 0.15rem 0.6rem;
+        border-radius: 0.375rem;
+        margin-right: 0.5rem;
+        font-style: italic;
+    }
+    .field-badge {
+        display: inline-block;
+        background: #EFF6FF;
+        color: #1D4ED8;
+        font-size: 0.7rem;
+        font-weight: 500;
+        padding: 0.1rem 0.5rem;
+        border-radius: 9999px;
+        margin-right: 0.3rem;
+        margin-bottom: 0.25rem;
+    }
+    .field-badge-container {
+        margin-top: 0.4rem;
+        margin-bottom: 0.3rem;
+    }
+
+    /* ── Citations ── */
     .citation {
+        display: inline-block;
         background-color: #EFF6FF;
         padding: 0.25rem 0.5rem;
         border-radius: 0.25rem;
         font-weight: 600;
         color: #1D4ED8;
         font-size: 0.9em;
+        white-space: nowrap;
     }
+
+    /* ── Callout boxes ── */
     .success-box {
         padding: 1rem 1.25rem;
         border-radius: 0.75rem;
@@ -72,6 +168,7 @@ APP_CSS = """
         border-left: 4px solid #10B981;
         margin-bottom: 1.5rem;
         box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
+        font-weight: 500;
     }
     .warning-box {
         padding: 1rem 1.25rem;
@@ -81,28 +178,84 @@ APP_CSS = """
         margin-bottom: 1.5rem;
         box-shadow: 0 1px 3px rgba(245, 158, 11, 0.1);
     }
+
+    /* ── Answer container ── */
     .answer-container {
         padding: 1.5rem 2rem;
         border-radius: 0.75rem;
         background-color: #FFFFFF;
         border: 1px solid #E5E7EB;
         margin-bottom: 2rem;
-        line-height: 1.7;
+        font-size: 1rem;
+        line-height: 1.8;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
+
+    /* ── Analysis sections ── */
     .analysis-section {
         padding: 1.5rem;
         border-radius: 0.75rem;
         background: linear-gradient(135deg, #FFFFFF 0%, #F0F9FF 100%);
         border: 1px solid #E0F2FE;
         margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
+
+    /* ── Key finding items ── */
+    .key-finding-item {
+        padding: 0.6rem 0.9rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 100%);
+        border-left: 3px solid #F59E0B;
+        border-radius: 0 0.5rem 0.5rem 0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    /* ── Followup cards ── */
     .followup-card {
         padding: 1rem;
         border-radius: 0.5rem;
         background-color: #FFFFFF;
         border: 1px solid #E5E7EB;
         margin-bottom: 0.75rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        transition: box-shadow 0.2s ease;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar-section-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .api-status-row {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.2rem 0;
+        font-size: 0.8rem;
+    }
+    .api-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+    }
+    .api-status-dot.connected { background: #10B981; }
+    .api-status-dot.error { background: #EF4444; }
+    .api-status-dot.unknown { background: #9CA3AF; }
+
+    /* ── Divider ── */
+    .section-divider {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #E5E7EB;
     }
 </style>
 """
@@ -178,30 +331,56 @@ def display_sidebar() -> None:
         if st.session_state.config:
             config = st.session_state.config
 
-            st.info(f"**{t.t('sidebar_model')}:** {config.llm_model}")
-            st.info(f"**{t.t('sidebar_max_papers')}:** {config.max_papers_to_retrieve}")
-            st.info(f"**{t.t('sidebar_temperature')}:** {config.temperature}")
+            st.markdown(
+                f'<div class="sidebar-section-title">{t.t("sidebar_config_info")}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                f"""
+                <div style="font-size:0.85rem; line-height:1.8; padding:0 0.2rem;">
+                <b>{t.t('sidebar_model')}:</b> {config.llm_model}<br>
+                <b>{t.t('sidebar_max_papers')}:</b> {config.max_papers_to_retrieve}<br>
+                <b>{t.t('sidebar_temperature')}:</b> {config.temperature}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(
+                f'<div class="sidebar-section-title">{t.t("sidebar_api_section")}</div>',
+                unsafe_allow_html=True,
+            )
 
             api_status = []
             if config.openai_api_key:
-                api_status.append(t.t("api_openai"))
+                api_status.append(("connected", t.t("api_openai")))
+            else:
+                api_status.append(("unknown", "OpenAI"))
             if config.anthropic_api_key:
-                api_status.append(t.t("api_anthropic"))
+                api_status.append(("connected", t.t("api_anthropic")))
+            else:
+                api_status.append(("unknown", "Anthropic"))
             if config.semantic_scholar_api_key:
-                api_status.append(t.t("api_semantic_scholar_pro"))
+                api_status.append(("connected", t.t("api_semantic_scholar_pro")))
             else:
-                api_status.append(t.t("api_semantic_scholar_free"))
-            api_status.append("arXiv API")
+                api_status.append(("connected", t.t("api_semantic_scholar_free")))
+            api_status.append(("connected", "arXiv API"))
             if config.pubmed_api_key:
-                api_status.append("PubMed API (key)")
+                api_status.append(("connected", "PubMed API (key)"))
             else:
-                api_status.append("PubMed API (free)")
+                api_status.append(("connected", "PubMed API (free)"))
             if config.openalex_api_key:
-                api_status.append("OpenAlex API (key)")
+                api_status.append(("connected", "OpenAlex API (key)"))
             else:
-                api_status.append("OpenAlex API (free)")
+                api_status.append(("connected", "OpenAlex API (free)"))
 
-            st.info(f"**{t.t('sidebar_api_status')}:** {', '.join(api_status)}")
+            for dot_class, label in api_status:
+                st.markdown(
+                    f'<div class="api-status-row">'
+                    f'<span class="api-status-dot {dot_class}"></span> {label}'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
 
             st.markdown("---")
             st.markdown(f"#### {t.t('network_status')}")
@@ -213,13 +392,24 @@ def display_sidebar() -> None:
 
             if "last_connection_status" in st.session_state:
                 connection_status = st.session_state.last_connection_status
-                for api_key in ["semantic_scholar", "arxiv", "pubmed", "openalex"]:
-                    status = connection_status.get(api_key, {})
-                    display_name = api_key.replace("_", " ").title()
-                    if status.get("connected"):
-                        st.success(f"✅ {display_name} ({status.get('response_time', 0):.2f}s)")
-                    elif status.get("status"):
-                        st.error(f"❌ {display_name}")
+
+                apis = [
+                    ("Semantic Scholar", connection_status.get("semantic_scholar", {})),
+                    ("arXiv", connection_status.get("arxiv", {})),
+                    ("PubMed", connection_status.get("pubmed", {})),
+                    ("OpenAlex", connection_status.get("openalex", {})),
+                ]
+                for name, status in apis:
+                    if status.get("status"):
+                        dot = "connected" if status.get("connected") else "error"
+                        rt = status.get("response_time", 0)
+                        label = f"{name} ({rt:.2f}s)" if rt else name
+                        st.markdown(
+                            f'<div class="api-status-row">'
+                            f'<span class="api-status-dot {dot}"></span> {label}'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
 
         st.markdown("---")
         st.markdown(f"### {t.t('sidebar_how_it_works')}")
@@ -278,24 +468,94 @@ def display_search_form() -> Tuple[str, int, bool]:
     return query, int(limit), search_button
 
 
-def display_paper_card(paper: Paper, index: int) -> None:
+def display_stats_bar(result: Any) -> None:
+    """Render 4 metric cards summarizing the search results."""
     t = get_translator()
+    papers = result.search_result.papers
+    if not papers:
+        return
+
+    total_citations = sum(p.citation_count or 0 for p in papers)
+    years = [p.year for p in papers if p.year]
+    avg_cit = int(total_citations / len(papers)) if papers else 0
+
+    st.markdown('<div class="stats-bar">', unsafe_allow_html=True)
+
+    st.markdown(f'''
+        <div class="stat-card">
+            <div class="stat-value">{len(papers)}</div>
+            <div class="stat-label">{t.t("stats_total_papers")}</div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown(f'''
+        <div class="stat-card">
+            <div class="stat-value">{total_citations:,}</div>
+            <div class="stat-label">{t.t("stats_total_citations")}</div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    st.markdown(f'''
+        <div class="stat-card">
+            <div class="stat-value">{avg_cit:,}</div>
+            <div class="stat-label">{t.t("stats_avg_citations")}</div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    if years:
+        yr_min, yr_max = min(years), max(years)
+        date_str = f"{yr_min}" if yr_min == yr_max else f"{yr_min} - {yr_max}"
+        st.markdown(f'''
+            <div class="stat-card">
+                <div class="stat-value" style="font-size:1.3rem;">{date_str}</div>
+                <div class="stat-label">{t.t("stats_date_range")}</div>
+            </div>
+        ''', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def display_paper_card(paper: Paper, index: int, is_cited: bool = False) -> None:
+    t = get_translator()
+    card_class = "paper-card paper-card-cited" if is_cited else "paper-card"
 
     with st.container():
-        st.markdown('<div class="paper-card">', unsafe_allow_html=True)
-        st.markdown(f"**[{index}] {paper.title}**")
+        st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
+
+        cited_html = (
+            f' <span class="cited-badge">{t.t("paper_cited_in_answer")}</span>'
+            if is_cited else ""
+        )
+        st.markdown(f"**[{index}] {paper.title}**{cited_html}", unsafe_allow_html=True)
+
+        if paper.venue:
+            st.markdown(
+                f'<span class="venue-badge">📖 {paper.venue}</span>',
+                unsafe_allow_html=True,
+            )
 
         authors_str = format_author_names(paper.authors, max_shown=3)
+        st.markdown(f"*{authors_str}*")
 
-        col1, col2, col3 = st.columns([2, 1, 1])
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown(f"*{authors_str}*")
-        with col2:
             if paper.year:
                 st.markdown(f"**{t.t('paper_year')}:** {paper.year}")
-        with col3:
+        with col2:
             if paper.citation_count is not None:
                 st.markdown(f"**{t.t('paper_citations')}:** {paper.citation_count}")
+        with col3:
+            if paper.reference_count is not None:
+                st.markdown(f"**{t.t('paper_reference_count')}:** {paper.reference_count}")
+
+        if paper.fields_of_study:
+            badges = "".join(
+                f'<span class="field-badge">{f}</span>' for f in paper.fields_of_study
+            )
+            st.markdown(
+                f'<div class="field-badge-container">{badges}</div>',
+                unsafe_allow_html=True,
+            )
 
         if paper.abstract:
             with st.expander(t.t("paper_abstract")):
@@ -317,36 +577,8 @@ def display_cross_paper_analysis(result: Any) -> None:
     st.markdown("---")
     st.markdown(f"### 🔬 {t.t('cross_paper_analysis_title')}")
     st.markdown('<div class="analysis-section">', unsafe_allow_html=True)
-
     st.markdown(analysis.research_trends)
-
     st.markdown("</div>", unsafe_allow_html=True)
-
-    if analysis.paper_analyses and result.search_result.papers:
-        st.markdown("---")
-        st.markdown(f"### 📝 {t.t('cross_paper_individual_title')}")
-        st.caption(t.t("cross_paper_individual_hint"))
-
-        for i, (paper_analysis, paper) in enumerate(zip(
-            analysis.paper_analyses[:_CROSS_PAPER_MAX_PAPERS],
-            result.search_result.papers[:_CROSS_PAPER_MAX_PAPERS]
-        )):
-            with st.expander(f"📄 [{i+1}] {paper.title[:60]}..."):
-                col1, col2 = st.columns(2)
-                _truncate = lambda s, n=150: s[:n] + "..." if len(s) > n else s
-                with col1:
-                    if paper_analysis.keywords:
-                        st.markdown(f"**🔑 {t.t('paper_analysis_keywords')}:**")
-                        st.markdown(", ".join(paper_analysis.keywords))
-                    if paper_analysis.research_method:
-                        st.markdown(f"\n**🔬 {t.t('paper_analysis_method')}:** {paper_analysis.research_method}")
-                with col2:
-                    if paper_analysis.contributions:
-                        st.markdown(f"**✨ {t.t('paper_analysis_contributions')}:**")
-                        st.markdown(_truncate(paper_analysis.contributions))
-                    if paper_analysis.limitations:
-                        st.markdown(f"\n**⚠️ {t.t('paper_analysis_limitations')}:**")
-                        st.markdown(_truncate(paper_analysis.limitations))
 
 
 def display_followup_section(result: Any) -> None:
@@ -386,7 +618,7 @@ def display_followup_section(result: Any) -> None:
                 if followup.get("error"):
                     st.error(followup["answer"])
                 else:
-                    answer_text = _CITATION_HTML_RE.sub(_CITATION_HTML_REPL, followup["answer"])
+                    answer_text = re.sub(r"\[(\d+)\]", r'<span class="citation">[\1]</span>', followup["answer"])
                     st.markdown(answer_text, unsafe_allow_html=True)
 
 
@@ -407,13 +639,15 @@ def display_results(result: Any) -> None:
         unsafe_allow_html=True,
     )
 
+    display_stats_bar(result)
+
     display_cross_paper_analysis(result)
 
     st.markdown(f"### {t.t('results_answer')}")
     st.markdown('<div class="answer-container">', unsafe_allow_html=True)
 
     answer_text = result.llm_response.answer
-    answer_text = _CITATION_HTML_RE.sub(_CITATION_HTML_REPL, answer_text)
+    answer_text = re.sub(r"\[(\d+)\]", r'<span class="citation">[\1]</span>', answer_text)
     st.markdown(answer_text, unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -422,5 +656,8 @@ def display_results(result: Any) -> None:
 
     st.markdown(f"### {t.t('results_references')} ({len(result.search_result.papers)} papers)")
 
+    cited_indices = set(result.llm_response.citations)
+
     for idx, paper in enumerate(result.search_result.papers, 1):
-        display_paper_card(paper, idx)
+        is_cited = (idx - 1) in cited_indices
+        display_paper_card(paper, idx, is_cited=is_cited)

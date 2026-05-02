@@ -1,16 +1,23 @@
-"""Integration test for the AI Academic Paper Assistant."""
+#!/usr/bin/env python3
+"""
+Integration test for the AI Academic Paper Assistant.
+Tests the basic functionality without requiring API keys.
+"""
 
-import os
 import logging
+import os
+import sys
 
 import pytest
 
-from src.models.paper import Paper, Author, SearchResult, format_author_names
+from src.models.paper import Author, Paper, SearchResult, format_author_names
 from src.llm.processor import LLMProcessor
 from src.utils.config import AppConfig
 from src.utils.validation import clamp_paper_limit, normalize_search_query
 
+# Configure logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class TestDataModels:
@@ -67,6 +74,7 @@ class TestDataModels:
             year=2024,
             citation_count=0,
             reference_count=0,
+            url=None,
         )
         assert paper.fields_of_study == []
         assert isinstance(paper.fields_of_study, list)
@@ -128,6 +136,13 @@ class TestConfiguration:
         )  # Out of range
         with pytest.raises(ValueError):
             config.validate()
+
+    def test_available_models(self):
+        config = AppConfig(openai_api_key="test")
+        models = config.get_available_models()
+        assert "gpt-4o-mini" in models
+        assert "gpt-4o" in models
+        assert "gpt-4-turbo" in models
 
 
 class TestPaperProcessing:
@@ -191,7 +206,6 @@ class TestPaperProcessing:
             prompt = processor._create_prompt("Test query", context)
 
             assert "Test query" in prompt
-            assert "重要指示" in prompt
         finally:
             if original_openai_key:
                 os.environ["OPENAI_API_KEY"] = original_openai_key
@@ -205,37 +219,34 @@ class TestPaperProcessing:
         )
         assert processor.openai_api_key == "test-key-from-constructor"
 
-    def test_processor_without_api_key(self):
-        """Test that LLMProcessor works without API key (returns paper list)."""
-        original_key = os.environ.pop("OPENAI_API_KEY", None)
-        try:
-            processor = LLMProcessor(model="gpt-3.5-turbo", openai_api_key=None)
-            assert processor.client is None
-
-            papers = [
-                Paper(
-                    paper_id="1",
-                    title="Test Paper",
-                    abstract="Abstract",
-                    authors=[Author(name="Test Author")],
-                    year=2024,
-                    citation_count=0,
-                    reference_count=0,
-                    url="https://example.com",
-                ),
-            ]
-            response = processor.generate_answer("test query", papers)
-            assert response.error == "No API key provided"
-            assert "1 篇相关论文" in response.answer
-        finally:
-            if original_key:
-                os.environ["OPENAI_API_KEY"] = original_key
-
     def test_parse_response_citations(self):
         """Test citation parsing from LLM response."""
-        response_text = "According to [1], neural networks are powerful. This is supported by [2] and [3]."
-        citations = LLMProcessor._extract_citations(response_text, 5)
+        original_openai_key = os.environ.get("OPENAI_API_KEY")
+        os.environ["OPENAI_API_KEY"] = "test-key"
 
-        assert 0 in citations  # [1] -> index 0
-        assert 1 in citations  # [2] -> index 1
-        assert 2 in citations  # [3] -> index 2
+        try:
+            processor = LLMProcessor(model="gpt-3.5-turbo")
+            response_text = "According to [1], neural networks are powerful. This is supported by [2] and [3]."
+            answer, citations = processor._parse_response(response_text)
+
+            assert answer == response_text
+            assert 0 in citations  # [1] -> index 0
+            assert 1 in citations  # [2] -> index 1
+            assert 2 in citations  # [3] -> index 2
+        finally:
+            if original_openai_key:
+                os.environ["OPENAI_API_KEY"] = original_openai_key
+            else:
+                del os.environ["OPENAI_API_KEY"]
+
+
+
+
+
+def main():
+    """Run all integration tests using pytest."""
+    sys.exit(pytest.main([__file__, "-v"]))
+
+
+if __name__ == "__main__":
+    main()

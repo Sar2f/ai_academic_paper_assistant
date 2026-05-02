@@ -1,24 +1,23 @@
 import logging
-from typing import Optional, List
+from typing import Optional
 
-from .api_manager import APIManager, _deduplicate_papers
-from ..models.paper import Paper, SearchResult
+from .api_manager import APIManager
+from ..models.paper import SearchResult
 
 logger = logging.getLogger(__name__)
 
 
 class FallbackHandler:
-    """统一的降级处理器"""
+    """Graceful degradation when primary APIs fail."""
 
     def __init__(self, api_manager: APIManager):
         self.api_manager = api_manager
 
     def try_fallback_apis(self, query: str, limit: int, sort_by: str = "relevance") -> Optional[SearchResult]:
-        """
-        尝试使用降级API获取结果，按优先级尝试不同的API组合。
+        """Try fallback API combinations in priority order.
 
         Returns:
-            搜索结果，如果所有API都失败则返回None
+            SearchResult if any strategy succeeds, None if all fail.
         """
         fallback_strategies = [
             ["arxiv", "pubmed"],
@@ -29,7 +28,7 @@ class FallbackHandler:
 
         for strategy in fallback_strategies:
             try:
-                papers: List[Paper] = []
+                papers = []
                 for api_name in strategy:
                     api = self.api_manager.get_api(api_name)
                     if api:
@@ -37,17 +36,15 @@ class FallbackHandler:
                         papers.extend(result.papers)
 
                 if papers:
-                    unique = _deduplicate_papers(papers, limit)
-                    logger.info("Fallback strategy %s successful, found %d papers", strategy, len(unique))
+                    logger.info("Fallback strategy %s successful, found %d papers", strategy, len(papers))
                     return SearchResult(
                         query=query,
-                        papers=unique,
-                        total_results=len(unique),
+                        papers=papers[:limit],
+                        total_results=len(papers),
                         search_time=0,
                     )
             except Exception as e:
                 logger.warning("Fallback strategy %s failed: %s", strategy, e)
-                continue
 
         logger.warning("All fallback strategies failed")
         return None

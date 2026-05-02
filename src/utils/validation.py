@@ -1,28 +1,16 @@
-"""
-Input validation for search and retrieval (defensive defaults for demos and grading).
-"""
-
-from __future__ import annotations
+"""Input validation for search queries and paper limits."""
 
 from typing import Optional
 
-# Reasonable bounds for a thesis demo / public API
 MAX_QUERY_LENGTH = 2000
 MIN_PAPERS = 1
 MAX_PAPERS = 50
-# UI number_input max (aligned with app.py)
 MAX_PAPERS_UI = 20
 
 
 def normalize_search_query(raw: Optional[str]) -> Optional[str]:
-    """
-    Strip whitespace; reject empty or over-long queries.
-
-    Returns None if the query should be rejected before calling external APIs.
-    """
-    if raw is None:
-        return None
-    if not isinstance(raw, str):
+    """Strip whitespace; reject empty/None/non-string; truncate over-long queries."""
+    if raw is None or not isinstance(raw, str):
         return None
     text = raw.strip()
     if not text:

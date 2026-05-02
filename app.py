@@ -6,6 +6,7 @@ import logging
 import streamlit as st
 from dotenv import load_dotenv
 
+from src.i18n.translations import Translator
 from src.interface.streamlit_components import (
     APP_CSS,
     display_header,
@@ -24,10 +25,13 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 st.set_page_config(
-    page_title="AI 学术论文助手",
+    page_title="AI Academic Paper Assistant",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
+    menu_items={
+        "About": "AI Academic Paper Assistant — Zero Hallucination Guarantee. Built with Streamlit and love.",
+    },
 )
 st.markdown(APP_CSS, unsafe_allow_html=True)
 

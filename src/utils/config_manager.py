@@ -1,7 +1,8 @@
-import os
 import json
 import logging
+import os
 from typing import Optional
+
 from .config import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -17,11 +18,9 @@ class ConfigManager:
         Args:
             config_dir: Optional custom configuration directory
         """
-        self.config_dir = config_dir or os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-
-        # Configuration file paths
-        self.env_file = ".env"
-        self.json_file = os.path.join(self.config_dir, "config.json")
+        self._project_root = config_dir or os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        self.env_file = os.path.join(self._project_root, ".env")
+        self.json_file = os.path.join(self._project_root, "config", "config.json")
         self.current_source = None
         self.current_config = None
 
@@ -57,7 +56,7 @@ class ConfigManager:
         self.current_source = source
 
         if source == "env":
-            config = AppConfig.from_env()
+            config = self._load_from_env()
         elif source == "json":
             config = self._load_from_json()
         else:  # default
@@ -73,6 +72,10 @@ class ConfigManager:
 
         self.current_config = config
         return config
+
+    def _load_from_env(self) -> AppConfig:
+        """Load configuration from environment variables."""
+        return AppConfig.from_env()
 
     def _load_from_json(self) -> AppConfig:
         """Load configuration from JSON file."""
@@ -102,3 +105,5 @@ class ConfigManager:
         except json.JSONDecodeError as e:
             logger.error("Invalid JSON in config file: %s", e)
             return AppConfig()
+
+
