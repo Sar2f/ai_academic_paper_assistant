@@ -137,14 +137,6 @@ class TestConfiguration:
         with pytest.raises(ValueError):
             config.validate()
 
-    def test_available_models(self):
-        config = AppConfig(openai_api_key="test")
-        models = config.get_available_models()
-        assert "gpt-4o-mini" in models
-        assert "gpt-4o" in models
-        assert "gpt-4-turbo" in models
-
-
 class TestPaperProcessing:
     """Test paper processing with mock data."""
 

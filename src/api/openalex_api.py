@@ -1,11 +1,15 @@
-import time
+"""
+OpenAlex API client.
+
+Only implements _build_connection_test() and _fetch_raw();
+retry logic and normalisation are handled by BaseAPI.
+"""
+
 import logging
 from typing import List, Optional
-import requests
 
 from .base_api import BaseAPI
 from ..models.paper import Paper, SearchResult, Author
-from ..utils.validation import normalize_search_query
 
 logger = logging.getLogger(__name__)
 
@@ -14,212 +18,96 @@ class OpenAlexAPI(BaseAPI):
     """Client for interacting with the OpenAlex API."""
 
     BASE_URL = "https://api.openalex.org"
+    API_NAME = "OpenAlex"
 
     def __init__(self, api_key: Optional[str] = None, rate_limit_delay: float = 0.5):
-        """
-        Initialize the OpenAlex API client.
-
-        Args:
-            api_key: API key for OpenAlex API (optional)
-            rate_limit_delay: Delay between requests to respect rate limits
-        """
         super().__init__(api_key=api_key, rate_limit_delay=rate_limit_delay)
 
-    def check_connection(self) -> dict:
-        """
-        Check if the API is accessible.
-
-        Returns:
-            Dictionary with connection status and details
-        """
-        test_query = "test"
-        test_url = f"{self.BASE_URL}/works"
-        test_params = {
-            "search": test_query,
-            "per_page": 1,
-        }
-
+    def _build_connection_test(self) -> tuple:
+        params = {"search": "test", "per_page": 1}
         if self.api_key:
-            test_params["api_key"] = self.api_key
+            params["api_key"] = self.api_key
+        return (f"{self.BASE_URL}/works", params, 5)
 
-        try:
-            start_time = time.time()
-            response = self.session.get(test_url, params=test_params, timeout=5)
-            response_time = time.time() - start_time
-
-            if response.status_code == 200:
-                return {
-                    "connected": True,
-                    "status": "connected",
-                    "message": (
-                        f"Connected to OpenAlex API "
-                        f"(response time: {response_time:.2f}s)"
-                    ),
-                    "response_time": response_time
-                }
-            else:
-                return {
-                    "connected": False,
-                    "status": f"error_{response.status_code}",
-                    "message": f"API returned status code: {response.status_code}"
-                }
-        except requests.exceptions.Timeout:
-            return {
-                "connected": False,
-                "status": "timeout",
-                "message": "Connection timeout - API not reachable"
-            }
-        except requests.exceptions.ConnectionError:
-            return {
-                "connected": False,
-                "status": "connection_error",
-                "message": "Connection error - network issue or API down"
-            }
-        except Exception as e:
-            return {
-                "connected": False,
-                "status": "unknown_error",
-                "message": f"Unknown error: {str(e)}"
-            }
-
-    def search_papers(
+    def _fetch_raw(
         self,
         query: str,
-        limit: int = 10,
-        fields: Optional[List[str]] = None,
-        year_range: Optional[tuple] = None,
-        min_citation_count: Optional[int] = None,
-        sort_by: str = "relevance"
+        limit: int,
+        fields: Optional[List[str]],
+        year_range: Optional[tuple],
+        min_citation_count: Optional[int],
+        sort_by: str,
     ) -> SearchResult:
-        """
-        Search for papers using the OpenAlex API.
-
-        Args:
-            query: Search query string
-            limit: Maximum number of papers to return
-            fields: List of fields to return (default: basic fields)
-            year_range: Tuple of (min_year, max_year) for filtering
-            min_citation_count: Minimum citation count for filtering
-
-        Returns:
-            SearchResult object containing the papers
-        """
-        start_time = time.time()
-
-        normalized = normalize_search_query(query)
-        if not normalized:
-            return SearchResult(
-                query=query if isinstance(query, str) else "",
-                papers=[],
-                total_results=0,
-                search_time=time.time() - start_time,
-            )
-
-        query = normalized
-
-        # Map sort_by to OpenAlex API sort parameters
+        """Fetch papers from OpenAlex (no retry — handled by BaseAPI)."""
         sort_map = {
             "relevance": None,
             "citedness": "cited_by_count:desc",
-            "recent": "publication_year:desc"
+            "recent": "publication_year:desc",
         }
         sort_field = sort_map.get(sort_by, None)
-        # Build search parameters
-        search_params = {
-            "search": query,
-            "per_page": limit,
-        }
 
+        search_params = {"search": query, "per_page": limit}
         if sort_field:
             search_params["sort"] = sort_field
 
         filters = []
         if year_range:
             min_year, max_year = year_range
-            filters.extend([f"publication_year:>={min_year}", f"publication_year:<={max_year}"])
-
+            filters.extend([
+                f"publication_year:>={min_year}",
+                f"publication_year:<={max_year}",
+            ])
         if min_citation_count is not None:
             filters.append(f"cited_by_count:>={min_citation_count}")
-
         if filters:
             search_params["filter"] = ",".join(filters)
 
         if self.api_key:
             search_params["api_key"] = self.api_key
 
-        try:
-            response = self.session.get(f"{self.BASE_URL}/works", params=search_params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+        response = self.session.get(
+            f"{self.BASE_URL}/works", params=search_params, timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
 
-            papers = []
-            for item in data.get("results", []):
-                try:
-                    # Extract title
-                    title = item.get("title", "")
+        papers = []
+        for item in data.get("results", []):
+            try:
+                title = item.get("title", "")
+                abstract = item.get("abstract", None)
 
-                    # Extract abstract
-                    abstract = item.get("abstract", None)
+                authors = []
+                for author in item.get("authorships", []):
+                    author_name = author.get("author", {}).get("display_name", "")
+                    if author_name:
+                        authors.append(Author(name=author_name))
 
-                    # Extract authors
-                    authors = []
-                    for author in item.get("authorships", []):
-                        author_name = author.get("author", {}).get("display_name", "")
-                        if author_name:
-                            authors.append(Author(name=author_name))
+                year = item.get("publication_year", None)
+                venue = item.get("host_venue", {}).get("display_name", "OpenAlex")
+                url = item.get("id", None)
+                paper_id = item.get("id", "").split("/")[-1]
+                citation_count = item.get("cited_by_count", None)
 
-                    # Extract publication year
-                    year = item.get("publication_year", None)
+                papers.append(Paper(
+                    paper_id=paper_id,
+                    title=title,
+                    abstract=abstract,
+                    authors=authors,
+                    year=year,
+                    citation_count=citation_count,
+                    reference_count=None,
+                    url=url,
+                    venue=venue,
+                    fields_of_study=[],
+                    publication_date=None,
+                ))
+            except Exception as e:
+                logger.warning("Failed to parse paper data: %s", e)
 
-                    # Extract venue
-                    venue = item.get("host_venue", {}).get("display_name", "OpenAlex")
-
-                    # Extract URL
-                    url = item.get("id", None)
-
-                    # Extract paper ID
-                    paper_id = item.get("id", "").split("/")[-1]
-
-                    # Extract citation count
-                    citation_count = item.get("cited_by_count", None)
-
-                    # Create Paper object
-                    paper = Paper(
-                        paper_id=paper_id,
-                        title=title,
-                        abstract=abstract,
-                        authors=authors,
-                        year=year,
-                        citation_count=citation_count,
-                        reference_count=None,  # OpenAlex API doesn't provide reference count
-                        url=url,
-                        venue=venue,
-                        fields_of_study=[],  # OpenAlex API doesn't provide fields of study
-                        publication_date=None
-                    )
-                    papers.append(paper)
-                except Exception as e:
-                    logger.warning("Failed to parse paper data: %s", e)
-                    continue
-
-            # Respect rate limits
-            time.sleep(self.rate_limit_delay)
-
-            search_time = time.time() - start_time
-
-            return SearchResult(
-                query=query,
-                papers=papers,
-                total_results=len(papers),
-                search_time=search_time
-            )
-
-        except Exception as e:
-            logger.warning("Error searching OpenAlex: %s", e)
-            search_time = time.time() - start_time
-            return SearchResult(
-                query=query,
-                papers=[],
-                total_results=0,
-                search_time=search_time
-            )
+        return SearchResult(
+            query=query,
+            papers=papers,
+            total_results=len(papers),
+            search_time=0,  # set by BaseAPI.search_papers
+        )

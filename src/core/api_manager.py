@@ -1,3 +1,4 @@
+import re
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional
@@ -10,6 +11,30 @@ from ..models.paper import Paper
 from ..utils.config import AppConfig
 
 logger = logging.getLogger(__name__)
+
+_WHITESPACE_RE = re.compile(r"\s+")
+_PUNCT_RE = re.compile(r"[^\w\s]")
+
+
+def _normalise_title(title: str) -> str:
+    """Normalise a paper title for fuzzy dedup comparison."""
+    t = _PUNCT_RE.sub("", title.lower())
+    return _WHITESPACE_RE.sub(" ", t).strip()
+
+
+def _deduplicate_papers(papers: List[Paper], limit: int) -> List[Paper]:
+    """Deduplicate papers by normalised title, keeping richer metadata on collision."""
+    seen: Dict[str, Paper] = {}
+    for paper in papers:
+        key = _normalise_title(paper.title)
+        if key not in seen:
+            seen[key] = paper
+        else:
+            existing = seen[key]
+            if (paper.abstract and not existing.abstract) or \
+               (paper.citation_count is not None and existing.citation_count is None):
+                seen[key] = paper
+    return list(seen.values())[:limit]
 
 
 class APIManager:
@@ -82,14 +107,7 @@ class APIManager:
             for future in as_completed(futures):
                 all_papers.extend(future.result())
 
-        seen_titles: set = set()
-        unique_papers = []
-        for paper in all_papers:
-            if paper.title not in seen_titles:
-                seen_titles.add(paper.title)
-                unique_papers.append(paper)
-
-        return unique_papers[:limit]
+        return _deduplicate_papers(all_papers, limit)
 
     def get_api(self, api_name: str) -> Optional[object]:
         return self.apis.get(api_name)
